@@ -38,18 +38,6 @@
             color: #fff;
             font-size: 0.8rem;
         }
-        .drop-zone {
-            border: 2px dashed #cbd5e1;
-            border-radius: 8px;
-            padding: 24px;
-            text-align: center;
-            background-color: #fff;
-            cursor: pointer;
-            transition: border-color 0.2s;
-        }
-        .drop-zone:hover {
-            border-color: var(--boec-accent);
-        }
         .audit-hash {
             font-family: monospace;
             font-size: 0.85rem;
@@ -65,6 +53,9 @@
         <div class="container-fluid">
             <a class="navbar-brand text-info" href="#"><i class="bi bi-cpu-fill me-2"></i>BOEC Engineering Consultants</a>
             <span class="navbar-text me-auto text-light small">AI-Driven Workflow Agent | SANAS CAL-2024-07</span>
+            <button class="btn btn-sm btn-outline-info me-2" data-bs-toggle="modal" data-bs-target="#aiSettingsModal">
+                <i class="bi bi-sliders me-1"></i>AI & LLM Settings
+            </button>
             <span class="badge badge-sanas me-2">SANAS TR-18</span>
             <span class="badge bg-success">ISO4037-3 Compliant</span>
             <span class="badge bg-secondary ms-2">POPIA Local Mode</span>
@@ -80,7 +71,8 @@
                     <p class="text-muted mb-0">Automated intake, ISO4037-3 validation engine, MCC15/MCC16 template generation, and hash-chained audit archiving.</p>
                 </div>
                 <div class="col-md-4 text-end">
-                    <span class="badge bg-primary fs-6 p-2"><i class="bi bi-pc-display me-1"></i>Ryzen 5 8600G Target</span>
+                    <span class="badge bg-primary fs-6 p-2 mb-1 d-inline-block"><i class="bi bi-pc-display me-1"></i>Ryzen 5 8600G Target</span><br>
+                    <span class="badge bg-dark text-info p-2 d-inline-block" id="aiActiveBadge"><i class="bi bi-robot me-1"></i>AI Provider: Ollama (llama3:8b)</span>
                 </div>
             </div>
         </div>
@@ -203,8 +195,161 @@
         </div>
     </div>
 
+    <!-- AI Agent Settings & LLM Config Modal -->
+    <div class="modal fade" id="aiSettingsModal" tabindex="-1" aria-labelledby="aiSettingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="aiSettingsModalLabel"><i class="bi bi-robot me-2 text-info"></i>AI Agent & LLM Provider Configuration</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="aiConfigForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Select AI Provider Engine</label>
+                            <select class="form-select" id="cfgProvider" onchange="toggleProviderFields()">
+                                <option value="ollama">Ollama Local LLM (POPIA Safe / Air-Gapped / llama3:8b)</option>
+                                <option value="openai">OpenAI / Cloud LLM API (Requires API Key)</option>
+                                <option value="heuristic">BOEC Local Rule-Based Extraction Engine (Fastest)</option>
+                            </select>
+                        </div>
+
+                        <!-- Ollama Configuration -->
+                        <div id="ollamaFields" class="p-3 bg-light rounded border mb-3">
+                            <h6 class="fw-bold text-primary mb-2"><i class="bi bi-pc-display me-2"></i>Local Ollama Settings</h6>
+                            <div class="row">
+                                <div class="col-md-7 mb-2">
+                                    <label class="form-label small fw-semibold">Ollama Host URL</label>
+                                    <input type="text" class="form-control form-control-sm" id="cfgOllamaUrl" value="http://127.0.0.1:11434">
+                                </div>
+                                <div class="col-md-5 mb-2">
+                                    <label class="form-label small fw-semibold">Local Model Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="cfgOllamaModel" value="llama3:8b">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- OpenAI Configuration -->
+                        <div id="openaiFields" class="p-3 bg-light rounded border mb-3" style="display: none;">
+                            <h6 class="fw-bold text-success mb-2"><i class="bi bi-cloud-check me-2"></i>OpenAI / Cloud API Key Settings</h6>
+                            <div class="row">
+                                <div class="col-md-7 mb-2">
+                                    <label class="form-label small fw-semibold">OpenAI API Key</label>
+                                    <input type="password" class="form-control form-control-sm" id="cfgOpenaiKey" placeholder="sk-proj-...">
+                                </div>
+                                <div class="col-md-5 mb-2">
+                                    <label class="form-label small fw-semibold">Model Target</label>
+                                    <input type="text" class="form-control form-control-sm" id="cfgOpenaiModel" value="gpt-4o-mini">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="testAIConnection()">
+                                <i class="bi bi-plug me-1"></i>Test AI Connection
+                            </button>
+                            <span id="aiTestResult" class="small fw-semibold"></span>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary fw-bold" onclick="saveAIConfig()">
+                        <i class="bi bi-check2-circle me-1"></i>Save Configuration
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const API_BASE = "";
+
+        async function loadAIConfig() {
+            try {
+                const res = await fetch(`${API_BASE}/api/config`);
+                const cfg = await res.json();
+                document.getElementById('cfgProvider').value = cfg.provider || 'ollama';
+                document.getElementById('cfgOllamaUrl').value = cfg.ollama_url || 'http://127.0.0.1:11434';
+                document.getElementById('cfgOllamaModel').value = cfg.ollama_model || 'llama3:8b';
+                document.getElementById('cfgOpenaiKey').value = cfg.openai_api_key || '';
+                document.getElementById('cfgOpenaiModel').value = cfg.openai_model || 'gpt-4o-mini';
+
+                document.getElementById('aiActiveBadge').innerHTML = `<i class="bi bi-robot me-1"></i>AI Engine: ${cfg.provider.toUpperCase()} (${cfg.ollama_model || 'Rules'})`;
+                toggleProviderFields();
+            } catch (err) {
+                console.error("Failed to load config", err);
+            }
+        }
+
+        function toggleProviderFields() {
+            const provider = document.getElementById('cfgProvider').value;
+            document.getElementById('ollamaFields').style.display = provider === 'ollama' ? 'block' : 'none';
+            document.getElementById('openaiFields').style.display = provider === 'openai' ? 'block' : 'none';
+        }
+
+        async function testAIConnection() {
+            const resultSpan = document.getElementById('aiTestResult');
+            resultSpan.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>Testing connection...`;
+
+            const payload = {
+                provider: document.getElementById('cfgProvider').value,
+                ollama_url: document.getElementById('cfgOllamaUrl').value,
+                ollama_model: document.getElementById('cfgOllamaModel').value,
+                openai_api_key: document.getElementById('cfgOpenaiKey').value,
+                openai_model: document.getElementById('cfgOpenaiModel').value
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/api/config/test-ai`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.status === 'CONNECTED') {
+                    resultSpan.className = 'small fw-semibold text-success';
+                    resultSpan.textContent = `✓ ${data.message}`;
+                } else if (data.status === 'OFFLINE_FALLBACK') {
+                    resultSpan.className = 'small fw-semibold text-warning';
+                    resultSpan.textContent = `⚠️ ${data.message}`;
+                } else {
+                    resultSpan.className = 'small fw-semibold text-danger';
+                    resultSpan.textContent = `❌ ${data.message}`;
+                }
+            } catch (err) {
+                resultSpan.className = 'small fw-semibold text-danger';
+                resultSpan.textContent = `Error: ${err.message}`;
+            }
+        }
+
+        async function saveAIConfig() {
+            const payload = {
+                provider: document.getElementById('cfgProvider').value,
+                ollama_url: document.getElementById('cfgOllamaUrl').value,
+                ollama_model: document.getElementById('cfgOllamaModel').value,
+                openai_api_key: document.getElementById('cfgOpenaiKey').value,
+                openai_model: document.getElementById('cfgOpenaiModel').value
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/api/config`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert("AI Configuration saved successfully!");
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('aiSettingsModal'));
+                    if (modal) modal.hide();
+                    loadAIConfig();
+                    loadAuditTrail();
+                }
+            } catch (err) {
+                alert(`Error saving configuration: ${err.message}`);
+            }
+        }
 
         document.getElementById('processForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -321,7 +466,8 @@
             }
         }
 
-        // Initial audit load
+        // Initial loads
+        loadAIConfig();
         loadAuditTrail();
     </script>
 </body>

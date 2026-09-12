@@ -1,0 +1,8 @@
+{
+  "provider": "ollama",
+  "ollama_url": "http://127.0.0.1:11434",
+  "ollama_model": "llama3:8b",
+  "openai_api_key": "",
+  "openai_model": "gpt-4o-mini",
+  "popia_strict_mode": true
+}

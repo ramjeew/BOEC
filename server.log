@@ -1,17 +1,15 @@
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [25977]
-INFO:     Started server process [52738]
+INFO:     Finished server process [102807]
+INFO:     Started server process [108851]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:37468 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34488 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34504 - "POST /api/process HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34514 - "GET /api/download/000d9568 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34528 - "GET /api/audit HTTP/1.1" 200 OK
-INFO:     127.0.0.1:35602 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:35606 - "POST /api/process HTTP/1.1" 200 OK
-INFO:     127.0.0.1:35614 - "GET /api/download/76ca3e31 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:35628 - "GET /api/audit HTTP/1.1" 200 OK
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:33822 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33828 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33842 - "POST /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33844 - "POST /api/config/test-ai HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33850 - "POST /api/process HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33866 - "GET /api/download/f49a1837 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33882 - "GET /api/audit HTTP/1.1" 200 OK
