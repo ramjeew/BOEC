@@ -1,0 +1,9 @@
+{
+  "name": "boec-calibration-agent-ui",
+  "version": "1.0.0",
+  "description": "BOEC AI-Driven Workflow Agent UI",
+  "private": true,
+  "scripts": {
+    "start": "npx serve -s frontend -l 3000"
+  }
+}
