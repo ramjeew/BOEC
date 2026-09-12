@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  boec-workflow-agent:
+    build: .
+    container_name: boec-agent
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/app/storage
+      - ./templates:/app/templates
+    environment:
+      - POPIA_MODE=strict
+      - SANAS_LAB=BOEC
+    restart: unless-stopped
