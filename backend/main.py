@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -11,12 +11,12 @@ from typing import Dict, Any, List
 from datetime import datetime
 from backend.parser import parse_excel
 from backend.validation import validate_calibration_data
-from backend.certificate import generate_certificate
+from backend.certificate import generate_certificate, generate_pdf_certificate
 from backend.audit import log_event, get_audit_trail
 from backend.llm_agent import ai_review, get_llama_client
 from backend.ai_agent import load_config, save_config, test_ai_connection
 
-app = FastAPI(title="BOEC Workflow Agent", version="2.1.0")
+app = FastAPI(title="BOEC Workflow Agent", version="2.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,7 +32,6 @@ UPLOADS_DIR = os.path.join(STORAGE_DIR, "uploads")
 os.makedirs(CERTS_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
-# In-memory jobs tracking
 jobs_store: Dict[str, Dict[str, Any]] = {}
 
 @app.get("/health")
@@ -43,7 +42,7 @@ async def health():
         "mode": "POPIA-safe local" if not llama else "Llama API hybrid",
         "sanas": "ready",
         "llama_configured": llama,
-        "version": "2.1.0"
+        "version": "2.2.0"
     }
 
 @app.get("/api/llama-status")
@@ -203,23 +202,28 @@ async def generate_cert(payload: Dict[str, Any] = Body(...)):
     job_id = payload.get("job_id", "JOB-DEMO")
     template_name = payload.get("template", "MCC15-07")
     cert_no = "BOEC-CAL-2024-084"
-    output_filename = f"{cert_no}.docx"
-    output_path = os.path.join(CERTS_DIR, output_filename)
+    docx_filename = f"{cert_no}.docx"
+    pdf_filename = f"{cert_no}.pdf"
+
+    docx_path = os.path.join(CERTS_DIR, docx_filename)
+    pdf_path = os.path.join(CERTS_DIR, pdf_filename)
 
     sub_data = {"customer": "Eskom Koeberg Nuclear Power Station", "equipment": "Thermo Fisher RadEye PRD-ER", "serial": "PRD-ER-88471"}
     cal_data = {"date": "2024-11-14", "technician": "J. Van der Merwe (SANAS Auth: TM-042)", "temperature": 21.3, "humidity": 48.2, "pressure": 1012.4}
     val_data = {"status": "PASS", "standard": "ISO4037-3:2019"}
 
-    generate_certificate(sub_data, cal_data, val_data, template_name, output_path)
+    generate_certificate(sub_data, cal_data, val_data, template_name, docx_path)
+    generate_pdf_certificate(sub_data, cal_data, val_data, template_name, pdf_path)
 
-    with open(output_path, "rb") as f:
+    with open(pdf_path, "rb") as f:
         file_hash = hashlib.sha256(f.read()).hexdigest()[:16]
 
     await log_event(job_id, "CERTIFICATE_GENERATED", {"cert_no": cert_no, "template": template_name, "hash": file_hash})
 
     return {
         "cert_no": cert_no,
-        "file_path": output_path,
+        "docx_path": docx_path,
+        "pdf_path": pdf_path,
         "hash": f"sha256:{file_hash}...",
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S SAST"),
         "status": "draft"
@@ -249,25 +253,30 @@ async def list_certs():
     files = os.listdir(CERTS_DIR) if os.path.exists(CERTS_DIR) else []
     return {"certificates": files}
 
+@app.get("/api/certs/{cert_no}/download-pdf")
 @app.get("/api/certs/{cert_no}/download")
 @app.get("/api/download/{job_id}")
-async def download_cert(cert_no: str = None, job_id: str = None):
-    target = cert_no or job_id
-    path = os.path.join(CERTS_DIR, f"{target}.docx")
+async def download_cert(cert_no: str = None, job_id: str = None, format: str = Query("pdf")):
+    target = cert_no or job_id or "BOEC-CAL-2024-084"
+    ext = ".pdf" if format.lower() == "pdf" else ".docx"
+    path = os.path.join(CERTS_DIR, f"{target}{ext}")
+
     if not os.path.exists(path):
-        path = os.path.join(CERTS_DIR, f"BOEC_CERT_{target}.docx")
-    if not os.path.exists(path):
-        # Return fallback docx if specific cert not found
-        files = [f for f in os.listdir(CERTS_DIR) if f.endswith(".docx")]
-        if files:
-            path = os.path.join(CERTS_DIR, files[0])
+        # Auto-generate if PDF requested but missing
+        sub_data = {"customer": "Eskom Koeberg Nuclear Power Station", "equipment": "Thermo Fisher RadEye PRD-ER", "serial": "PRD-ER-88471"}
+        cal_data = {"date": "2024-11-14", "technician": "J. Van der Merwe (SANAS Auth: TM-042)", "temperature": 21.3, "humidity": 48.2, "pressure": 1012.4}
+        val_data = {"status": "PASS"}
+        if format.lower() == "pdf":
+            generate_pdf_certificate(sub_data, cal_data, val_data, "MCC15-07", path)
         else:
-            raise HTTPException(404, "Certificate document not found")
+            generate_certificate(sub_data, cal_data, val_data, "MCC15-07", path)
+
+    media_type = "application/pdf" if format.lower() == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
     return FileResponse(
         path,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        filename=f"{target}.docx"
+        media_type=media_type,
+        filename=f"{target}{ext}"
     )
 
 @app.get("/api/templates")
@@ -303,6 +312,9 @@ async def process_submission(
         output_path = os.path.join(CERTS_DIR, f"BOEC-CAL-2024-084.docx")
         generate_certificate(sub_data, cal_data, validation, template_type, output_path)
 
+        pdf_path = os.path.join(CERTS_DIR, f"BOEC-CAL-2024-084.pdf")
+        generate_pdf_certificate(sub_data, cal_data, validation, template_type, pdf_path)
+
         await log_event(job_id, "PROCESS", {
             "template": template_type,
             "validation": validation["status"],
@@ -315,7 +327,9 @@ async def process_submission(
             "sub_data": sub_data,
             "cal_data_summary": {k: str(v)[:200] for k,v in list(cal_data.items())[:20]} if isinstance(cal_data, dict) else str(cal_data)[:1000],
             "certificate_path": output_path,
+            "pdf_path": pdf_path,
             "download_url": f"/api/download/{job_id}",
+            "download_pdf_url": f"/api/certs/BOEC-CAL-2024-084/download-pdf",
             "ai_review": ai_result
         }
 

@@ -78,7 +78,7 @@
     function App() {
       const [view, setView] = useState("dashboard");
       const [workflowStage, setWorkflowStage] = useState(1);
-      const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem("boec_backend_url") || "http://localhost:8000");
+      const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem("boec_backend_url") || (window.location.origin.includes("http") ? window.location.origin : "http://localhost:8000"));
       const [apiOnline, setApiOnline] = useState(false);
       const [dataSource, setDataSource] = useState("simulation");
       const [jobId, setJobId] = useState("JOB-2024-084");
@@ -91,6 +91,7 @@
       const [selectedTemplate, setSelectedTemplate] = useState("MCC15-07 v2.1");
       const [isSigned, setIsSigned] = useState(false);
       const [showOperatorModal, setShowOperatorModal] = useState(false);
+      const [showDataModal, setShowDataModal] = useState(null); // Modal data inspector
       const [parsingProgress, setParsingProgress] = useState(100);
       const [searchQuery, setSearchQuery] = useState("");
       const [generatedCert, setGeneratedCert] = useState(null);
@@ -122,7 +123,6 @@
         }
       };
 
-      // Poll health, audit, certs
       useEffect(() => {
         const poll = async () => {
           const health = await apiFetch("/health");
@@ -154,7 +154,6 @@
         setAudit(prev => [newEntry, ...prev]);
       };
 
-      // Upload Handler
       const handleFileUpload = async (subFile, rawFile) => {
         setParsingProgress(20);
         if (apiOnline) {
@@ -168,7 +167,6 @@
             setJobId(res.job_id);
             setParsingProgress(100);
 
-            // Extract
             const extractRes = await apiFetch("/api/extract", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -178,7 +176,6 @@
               setExtracted(extractRes.extracted);
             }
 
-            // Validate
             const valRes = await apiFetch("/api/validate", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -194,7 +191,6 @@
           }
         }
 
-        // Offline Simulation Fallback
         setParsingProgress(100);
         const simFiles = [
           { id: "1", name: subFile.name, type: "submission", size: `${(subFile.size/1024).toFixed(1)} KB`, ts: new Date().toLocaleString("en-ZA"), checksum: "sha256:a3f9...", status: "validated" },
@@ -206,7 +202,6 @@
         setView("stage2");
       };
 
-      // Generate Cert Handler
       const handleGenerateCert = async () => {
         if (apiOnline) {
           const res = await apiFetch("/api/generate-cert", {
@@ -219,7 +214,6 @@
             return;
           }
         }
-        // Fallback
         setGeneratedCert({
           cert_no: "BOEC-CAL-2024-084",
           hash: "sha256:9c2e4f8b1a3d...",
@@ -228,7 +222,6 @@
         });
       };
 
-      // Sign Handler
       const handleSign = async () => {
         setIsSigned(true);
         if (apiOnline) {
@@ -240,6 +233,11 @@
         }
         addAudit("Approved Final Release & Applied Digital Signature (RSA2048)", "S4->S5");
         setWorkflowStage(5);
+      };
+
+      const downloadPDF = (certNo = "BOEC-CAL-2024-084") => {
+        const targetUrl = apiOnline ? `${backendUrl}/api/certs/${certNo}/download-pdf` : `${backendUrl}/api/download/${certNo}?format=pdf`;
+        window.open(targetUrl, "_blank");
       };
 
       const filteredExtracted = extracted.filter(item =>
@@ -361,6 +359,7 @@
                     <span className="mono text-xs text-zinc-400">BOEC Accredited Laboratory CAL-2024-07</span>
                   </div>
 
+                  {/* 4 STAT CARDS */}
                   <div className="grid grid-cols-4 gap-4">
                     {[
                       { title: "Total Jobs Today", val: String(intakeFiles.length), sub: "Intake workbooks", icon: "bi-briefcase-fill", color: "text-amber-400" },
@@ -379,7 +378,9 @@
                     ))}
                   </div>
 
+                  {/* CLICKABLE 3 COLUMNS */}
                   <div className="grid grid-cols-3 gap-6">
+                    {/* COL 1: INTAKE FILES */}
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
                       <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
                         <span className="font-semibold text-sm">Recent Intake Files</span>
@@ -387,8 +388,15 @@
                       </div>
                       <div className="space-y-2">
                         {intakeFiles.map(file => (
-                          <div key={file.id} className="p-2.5 bg-zinc-800/40 rounded-lg border border-zinc-800/60 space-y-1">
-                            <div className="text-xs font-semibold text-zinc-200 truncate">{file.name}</div>
+                          <div
+                            key={file.id}
+                            onClick={() => setShowDataModal({ type: "file", title: file.name, data: file })}
+                            className="p-2.5 bg-zinc-800/40 hover:bg-zinc-800/80 cursor-pointer rounded-lg border border-zinc-800/60 space-y-1 transition"
+                          >
+                            <div className="text-xs font-semibold text-zinc-200 truncate flex items-center justify-between">
+                              <span>{file.name}</span>
+                              <i className="bi bi-box-arrow-up-right text-[10px] text-amber-400"></i>
+                            </div>
                             <div className="mono text-[10px] text-zinc-400 flex justify-between">
                               <span>{file.size}</span>
                               <span className="text-emerald-400">{file.status}</span>
@@ -398,6 +406,7 @@
                       </div>
                     </div>
 
+                    {/* COL 2: VALIDATION SUMMARY */}
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
                       <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
                         <span className="font-semibold text-sm">Live Validation Summary</span>
@@ -405,7 +414,11 @@
                       </div>
                       <div className="space-y-2">
                         {activeValidation.slice(0, 4).map((v, i) => (
-                          <div key={i} className="p-2 bg-zinc-800/40 rounded border border-zinc-800 flex justify-between items-center text-xs">
+                          <div
+                            key={i}
+                            onClick={() => setShowDataModal({ type: "rule", title: v.rule, data: v })}
+                            className="p-2 bg-zinc-800/40 hover:bg-zinc-800/80 cursor-pointer rounded border border-zinc-800 flex justify-between items-center text-xs transition"
+                          >
                             <span className="text-zinc-300">{v.rule}</span>
                             <span className={`mono text-[10px] px-1.5 py-0.5 rounded ${v.status === 'pass' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
                               {v.status.toUpperCase()}
@@ -415,19 +428,32 @@
                       </div>
                     </div>
 
+                    {/* COL 3: RECENT CERTIFICATES & DOWNLOAD */}
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
                       <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
-                        <span className="font-semibold text-sm">Audit Trail Digest</span>
-                        <span className="mono text-[10px] text-amber-400">SHA256 Log</span>
+                        <span className="font-semibold text-sm">Recent Certificates</span>
+                        <span className="mono text-[10px] text-amber-400">Signed & Ready</span>
                       </div>
                       <div className="space-y-2">
-                        {activeAudit.slice(0, 3).map((a, i) => (
-                          <div key={i} className="p-2 bg-zinc-800/40 rounded border border-zinc-800 space-y-1">
-                            <div className="text-[11px] text-zinc-300 truncate">{a.action}</div>
-                            <div className="mono text-[9px] text-zinc-500 flex justify-between">
-                              <span>{a.ts}</span>
-                              <span className="text-amber-500">{a.hash}</span>
+                        {[
+                          { cert_no: "BOEC-CAL-2024-084", client: "Eskom Koeberg", model: "Thermo RadEye PRD-ER", date: "2024-11-14" },
+                          { cert_no: "BOEC-CAL-2024-083", client: "Necsa Pelindaba", model: "Automess 6150AD", date: "2024-11-13" }
+                        ].map((c, i) => (
+                          <div
+                            key={i}
+                            className="p-2.5 bg-zinc-800/40 rounded border border-zinc-800 space-y-2"
+                          >
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="mono font-bold text-amber-400">{c.cert_no}</span>
+                              <span className="mono text-[9px] text-zinc-500">{c.date}</span>
                             </div>
+                            <div className="text-[11px] text-zinc-300">{c.client} • {c.model}</div>
+                            <button
+                              onClick={() => downloadPDF(c.cert_no)}
+                              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[10px] py-1 px-2 rounded flex items-center justify-center gap-1.5 transition"
+                            >
+                              <i className="bi bi-file-earmark-pdf-fill"></i> Download Signed PDF Certificate
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -672,10 +698,18 @@
                         <div className="font-bold">Signatory: J. Van der Merwe (TM-042)</div>
                         <div className="text-zinc-500">Technical Signatory • BOEC Engineering</div>
                       </div>
-                      <div className="text-right">
-                        <span className={`px-3 py-1 rounded text-white font-bold text-[10px] ${isSigned ? 'bg-emerald-600' : 'bg-amber-600'}`}>
+                      <div className="text-right space-y-2">
+                        <span className={`px-3 py-1 rounded text-white font-bold text-[10px] block ${isSigned ? 'bg-emerald-600' : 'bg-amber-600'}`}>
                           {isSigned ? 'DIGITALLY SIGNED (RSA-2048)' : 'UNSIGNED - PENDING APPROVAL'}
                         </span>
+                        {isSigned && (
+                          <button
+                            onClick={() => downloadPDF(generatedCert?.cert_no || "BOEC-CAL-2024-084")}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1.5 px-3 rounded flex items-center justify-center gap-1.5 transition"
+                          >
+                            <i className="bi bi-file-earmark-pdf-fill"></i> Download Signed PDF Certificate
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -690,6 +724,12 @@
                       <h1 className="text-lg font-bold text-white">Stage 5: Audit Log & Secure Archive</h1>
                       <p className="text-xs text-zinc-400">SQLite Hash-Chained Audit Database Trail</p>
                     </div>
+                    <button
+                      onClick={() => downloadPDF("BOEC-CAL-2024-084")}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2 rounded-lg flex items-center gap-2"
+                    >
+                      <i className="bi bi-file-earmark-pdf-fill"></i> Download Signed PDF Certificate
+                    </button>
                   </div>
 
                   <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
@@ -790,6 +830,24 @@
             </main>
           </div>
 
+          {/* DATA INSPECTION MODAL */}
+          {showDataModal && (
+            <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-[520px] max-w-full rounded-xl border border-zinc-700 bg-zinc-900 p-5 space-y-4 shadow-2xl">
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+                  <div className="font-bold text-sm text-amber-400">{showDataModal.title}</div>
+                  <button onClick={() => setShowDataModal(null)} className="text-zinc-400 hover:text-white"><i className="bi bi-x-lg"></i></button>
+                </div>
+                <pre className="mono text-xs text-zinc-300 bg-zinc-800/60 p-3 rounded border border-zinc-800 max-h-80 overflow-auto whitespace-pre-wrap break-all">
+                  {JSON.stringify(showDataModal.data, null, 2)}
+                </pre>
+                <button onClick={() => setShowDataModal(null)} className="w-full bg-zinc-800 text-zinc-300 text-xs py-2 rounded-lg border border-zinc-700 hover:bg-zinc-700">
+                  Close Inspector
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* OPERATOR REVIEW MODAL */}
           {showOperatorModal && (
             <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
@@ -810,22 +868,23 @@
                   <div className="flex justify-between"><span>Hash Chain:</span> <span className="text-emerald-400">{generatedCert?.hash || "sha256:a3f9c1e2..."}</span></div>
                 </div>
 
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowOperatorModal(false)}
-                    className="flex-1 bg-zinc-800 text-zinc-300 text-xs py-2 rounded-lg border border-zinc-700 hover:bg-zinc-700"
-                  >
-                    Return for Correction
-                  </button>
+                <div className="space-y-2">
                   <button
                     onClick={() => {
                       handleSign();
+                      downloadPDF(generatedCert?.cert_no || "BOEC-CAL-2024-084");
                       setShowOperatorModal(false);
                       setView("stage5");
                     }}
-                    className="flex-1 bg-amber-500 text-black font-semibold text-xs py-2 rounded-lg hover:bg-amber-400"
+                    className="w-full bg-emerald-600 text-white font-semibold text-xs py-2.5 rounded-lg hover:bg-emerald-500 flex items-center justify-center gap-2"
                   >
-                    Approve Final Release
+                    <i className="bi bi-file-earmark-pdf-fill"></i> Approve & Download Signed PDF
+                  </button>
+                  <button
+                    onClick={() => setShowOperatorModal(false)}
+                    className="w-full bg-zinc-800 text-zinc-300 text-xs py-2 rounded-lg border border-zinc-700 hover:bg-zinc-700"
+                  >
+                    Return for Correction
                   </button>
                 </div>
               </div>
