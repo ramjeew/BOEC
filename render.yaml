@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: boec-calibration-agent
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: POPIA_MODE
+        value: strict
+      - key: SANAS_LAB
+        value: BOEC
