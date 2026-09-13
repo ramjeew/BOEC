@@ -1,474 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOEC Engineering - Calibration Certificate Automation Agent</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <style>
-        :root {
-            --boec-blue: #0f3460;
-            --boec-accent: #00adb5;
-            --boec-bg: #f8f9fa;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--boec-bg);
-        }
-        .navbar-brand {
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-        .card {
-            border-radius: 10px;
-            border: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            margin-bottom: 24px;
-        }
-        .card-header {
-            background-color: var(--boec-blue);
-            color: #fff;
-            border-top-left-radius: 10px !important;
-            border-top-right-radius: 10px !important;
-            font-weight: 600;
-        }
-        .badge-sanas {
-            background-color: #d9534f;
-            color: #fff;
-            font-size: 0.8rem;
-        }
-        .audit-hash {
-            font-family: monospace;
-            font-size: 0.85rem;
-            word-break: break-all;
-        }
-        .status-pass { color: #198754; font-weight: bold; }
-        .status-review { color: #ffc107; font-weight: bold; }
-        .status-fail { color: #dc3545; font-weight: bold; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BOEC Calibration Intelligence Agent Workstation</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    :root { --boec-blue: #0f3460; --boec-accent: #00adb5; --boec-bg: #0e0f11; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--boec-bg); color: #f8f9fa; }
+    .card { background-color: #16181b; border: 1px solid #27272a; border-radius: 10px; margin-bottom: 24px; color: #fff; }
+    .card-header { background-color: #1f2937; border-bottom: 1px solid #374151; font-weight: 600; color: #00adb5; }
+    .badge-sanas { background-color: #d9534f; color: #fff; }
+    .audit-hash { font-family: monospace; font-size: 0.85rem; word-break: break-all; }
+  </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand text-info" href="#"><i class="bi bi-cpu-fill me-2"></i>BOEC Engineering Consultants</a>
-            <span class="navbar-text me-auto text-light small">AI-Driven Workflow Agent | SANAS CAL-2024-07</span>
-            <button class="btn btn-sm btn-outline-info me-2" data-bs-toggle="modal" data-bs-target="#aiSettingsModal">
-                <i class="bi bi-sliders me-1"></i>AI & LLM Settings
-            </button>
-            <span class="badge badge-sanas me-2">SANAS TR-18</span>
-            <span class="badge bg-success">ISO4037-3 Compliant</span>
-            <span class="badge bg-secondary ms-2">POPIA Local Mode</span>
-        </div>
-    </nav>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary px-3">
+    <a class="navbar-brand text-info fw-bold" href="#"><i class="bi bi-cpu-fill me-2"></i>BOEC Engineering Consultants</a>
+    <span class="navbar-text me-auto text-light small">AI-Driven Workflow Agent | SANAS CAL-2024-07</span>
+    <span class="badge badge-sanas me-2">SANAS TR-18</span>
+    <span class="badge bg-success me-2">ISO4037-3 Compliant</span>
+    <span class="badge bg-secondary">POPIA Local Mode</span>
+  </nav>
 
-    <div class="container py-4">
-        <!-- Header Banner -->
-        <div class="p-4 mb-4 bg-white rounded-3 shadow-sm border-start border-4 border-info">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h3 class="fw-bold text-dark mb-1">Calibration Certificate Automation Workstation</h3>
-                    <p class="text-muted mb-0">Automated intake, ISO4037-3 validation engine, MCC15/MCC16 template generation, and hash-chained audit archiving.</p>
-                </div>
-                <div class="col-md-4 text-end">
-                    <span class="badge bg-primary fs-6 p-2 mb-1 d-inline-block"><i class="bi bi-pc-display me-1"></i>Ryzen 5 8600G Target</span><br>
-                    <span class="badge bg-dark text-info p-2 d-inline-block" id="aiActiveBadge"><i class="bi bi-robot me-1"></i>AI Provider: Ollama (llama3:8b)</span>
-                </div>
-            </div>
-        </div>
+  <div class="container py-4">
+    <div class="p-4 mb-4 bg-dark rounded-3 border border-secondary">
+      <h3 class="fw-bold text-info mb-1">Calibration Certificate Automation Workstation</h3>
+      <p class="text-muted mb-0">Automated intake, ISO4037-3 validation engine, MCC15/MCC16 template generation, and Llama API AI review.</p>
+    </div>
 
-        <div class="row">
-            <!-- Stage 1 & 2 Intake Form -->
-            <div class="col-lg-6">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-upload me-2"></i>Stage 1: File Intake & Processing</span>
-                        <span class="badge bg-info text-dark">MCC15-07 / MCC16-07</span>
-                    </div>
-                    <div class="card-body">
-                        <form id="processForm">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">1. Client Submission Form (Excel)</label>
-                                <input type="file" class="form-control" id="submissionFile" accept=".xlsx,.xls" required>
-                                <div class="form-text">Contains customer details, equipment model, serial number.</div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">2. Raw Calibration Data (Excel)</label>
-                                <input type="file" class="form-control" id="calibrationFile" accept=".xlsx,.xls" required>
-                                <div class="form-text">Contains dose rate measurements, background, environmental conditions.</div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">3. Certificate Output Template</label>
-                                <select class="form-select" id="templateType">
-                                    <option value="MCC15-07" selected>MCC15-07 (Standard Calibration Certificate)</option>
-                                    <option value="MCC16-07">MCC16-07 (Survey Meter / EPD Certificate)</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100 fw-bold" id="btnProcess">
-                                <i class="bi bi-gear-wide-connected me-2"></i>Process Submission & Validate
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Stage 3 & 4 Validation and Result -->
-            <div class="col-lg-6">
-                <div class="card">
-                    <div class="card-header">
-                        <span><i class="bi bi-shield-check me-2"></i>Stage 3 & 4: ISO4037-3 Validation & Certificate</span>
-                    </div>
-                    <div class="card-body" id="resultContainer">
-                        <div class="text-center text-muted py-5" id="placeholderResult">
-                            <i class="bi bi-file-earmark-arrow-up fs-1 mb-2 text-secondary"></i>
-                            <p>Upload submission and calibration Excel files to view validation results and generate certificate.</p>
-                        </div>
-                        <div id="activeResult" style="display: none;">
-                            <div class="alert alert-success d-flex align-items-center mb-3" id="statusAlert">
-                                <i class="bi bi-check-circle-fill fs-4 me-3"></i>
-                                <div>
-                                    <h6 class="alert-heading mb-0 fw-bold" id="statusTitle">Validation Status: PASS</h6>
-                                    <small id="statusSubtitle">ISO4037-3 & SANAS TR-18 Rules Passed</small>
-                                </div>
-                            </div>
-
-                            <h6 class="fw-bold border-bottom pb-2">Extracted Instrument Metadata</h6>
-                            <table class="table table-sm table-bordered mb-3">
-                                <tbody>
-                                    <tr><th class="bg-light" style="width: 40%;">Customer:</th><td id="resCustomer">-</td></tr>
-                                    <tr><th class="bg-light">Equipment Model:</th><td id="resEquipment">-</td></tr>
-                                    <tr><th class="bg-light">Serial Number:</th><td id="resSerial">-</td></tr>
-                                    <tr><th class="bg-light">Calibration Date:</th><td id="resDate">-</td></tr>
-                                    <tr><th class="bg-light">Technician:</th><td id="resTechnician">-</td></tr>
-                                    <tr><th class="bg-light">Env Temp / Humidity:</th><td id="resEnv">-</td></tr>
-                                </tbody>
-                            </table>
-
-                            <h6 class="fw-bold border-bottom pb-2">ISO4037-3 Compliance Checks</h6>
-                            <ul class="list-group list-group-flush mb-3 small" id="isoChecksList">
-                            </ul>
-
-                            <div class="d-grid gap-2">
-                                <a href="#" class="btn btn-success fw-bold" id="btnDownload" target="_blank">
-                                    <i class="bi bi-file-earmark-word me-2"></i>Download Generated Certificate (.docx)
-                                </a>
-                            </div>
-
-                            <div class="mt-3 p-2 bg-light rounded border">
-                                <small class="text-muted d-block">Audit Hash Chain Digest:</small>
-                                <span class="audit-hash text-primary" id="resHash">-</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stage 5 Audit Trail Viewer -->
+    <div class="row">
+      <div class="col-md-6">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-journal-text me-2"></i>Stage 5: SANAS Audit Log & Traceability Trail (SQLite Hash-Chained)</span>
-                <button class="btn btn-sm btn-outline-light" onclick="loadAuditTrail()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped mb-0 small">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>#</th>
-                                <th>Job ID</th>
-                                <th>Timestamp</th>
-                                <th>Event</th>
-                                <th>Validation Status</th>
-                                <th>Previous Hash</th>
-                                <th>SHA256 Hash</th>
-                            </tr>
-                        </thead>
-                        <tbody id="auditTableBody">
-                            <tr>
-                                <td colspan="7" class="text-center text-muted py-3">Loading audit trail...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+          <div class="card-header"><i class="bi bi-upload me-2"></i>Stage 1: File Intake & Processing</div>
+          <div class="card-body">
+            <form id="processForm">
+              <div class="mb-3">
+                <label class="form-label font-semibold">1. Client Submission Form (Excel)</label>
+                <input type="file" class="form-control bg-dark text-light border-secondary" id="subFile" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-semibold">2. Raw Calibration Data (Excel)</label>
+                <input type="file" class="form-control bg-dark text-light border-secondary" id="calFile" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label font-semibold">3. Certificate Output Template</label>
+                <select class="form-select bg-dark text-light border-secondary" id="templateType">
+                  <option value="MCC15-07" selected>MCC15-07 (Standard Calibration Certificate)</option>
+                  <option value="MCC16-07">MCC16-07 (Survey Meter / EPD Certificate)</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-info w-100 fw-bold" id="btnSubmit">Process Submission & Validate</button>
+            </form>
+          </div>
         </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header"><i class="bi bi-shield-check me-2"></i>Stage 3 & 4: ISO4037-3 Validation & Output</div>
+          <div class="card-body" id="outputContainer">
+            <p class="text-muted text-center py-5">Upload Excel submission and calibration files to run automated ISO4037-3 validation and generate certificate.</p>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- AI Agent Settings & LLM Config Modal -->
-    <div class="modal fade" id="aiSettingsModal" tabindex="-1" aria-labelledby="aiSettingsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title" id="aiSettingsModalLabel"><i class="bi bi-robot me-2 text-info"></i>AI Agent & LLM Provider Configuration</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="aiConfigForm">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Select AI Provider Engine</label>
-                            <select class="form-select" id="cfgProvider" onchange="toggleProviderFields()">
-                                <option value="ollama">Ollama Local LLM (POPIA Safe / Air-Gapped / llama3:8b)</option>
-                                <option value="openai">OpenAI / Cloud LLM API (Requires API Key)</option>
-                                <option value="heuristic">BOEC Local Rule-Based Extraction Engine (Fastest)</option>
-                            </select>
-                        </div>
-
-                        <!-- Ollama Configuration -->
-                        <div id="ollamaFields" class="p-3 bg-light rounded border mb-3">
-                            <h6 class="fw-bold text-primary mb-2"><i class="bi bi-pc-display me-2"></i>Local Ollama Settings</h6>
-                            <div class="row">
-                                <div class="col-md-7 mb-2">
-                                    <label class="form-label small fw-semibold">Ollama Host URL</label>
-                                    <input type="text" class="form-control form-control-sm" id="cfgOllamaUrl" value="http://127.0.0.1:11434">
-                                </div>
-                                <div class="col-md-5 mb-2">
-                                    <label class="form-label small fw-semibold">Local Model Name</label>
-                                    <input type="text" class="form-control form-control-sm" id="cfgOllamaModel" value="llama3:8b">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- OpenAI Configuration -->
-                        <div id="openaiFields" class="p-3 bg-light rounded border mb-3" style="display: none;">
-                            <h6 class="fw-bold text-success mb-2"><i class="bi bi-cloud-check me-2"></i>OpenAI / Cloud API Key Settings</h6>
-                            <div class="row">
-                                <div class="col-md-7 mb-2">
-                                    <label class="form-label small fw-semibold">OpenAI API Key</label>
-                                    <input type="password" class="form-control form-control-sm" id="cfgOpenaiKey" placeholder="sk-proj-...">
-                                </div>
-                                <div class="col-md-5 mb-2">
-                                    <label class="form-label small fw-semibold">Model Target</label>
-                                    <input type="text" class="form-control form-control-sm" id="cfgOpenaiModel" value="gpt-4o-mini">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="testAIConnection()">
-                                <i class="bi bi-plug me-1"></i>Test AI Connection
-                            </button>
-                            <span id="aiTestResult" class="small fw-semibold"></span>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary fw-bold" onclick="saveAIConfig()">
-                        <i class="bi bi-check2-circle me-1"></i>Save Configuration
-                    </button>
-                </div>
-            </div>
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-journal-text me-2"></i>Stage 5: SANAS Audit Log & Traceability Trail</span>
+        <button class="btn btn-sm btn-outline-info" onclick="loadAudit()">Refresh Log</button>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-dark table-striped mb-0 small">
+            <thead>
+              <tr><th>#</th><th>Job ID</th><th>Timestamp</th><th>Event</th><th>Validation Status</th><th>Hash Digest</th></tr>
+            </thead>
+            <tbody id="auditBody">
+              <tr><td colspan="6" class="text-center text-muted py-3">Loading audit records...</td></tr>
+            </tbody>
+          </table>
         </div>
+      </div>
     </div>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        const API_BASE = "";
+  <script>
+    document.getElementById('processForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmit');
+      btn.disabled = true;
+      btn.textContent = 'Processing & Validating...';
 
-        async function loadAIConfig() {
-            try {
-                const res = await fetch(`${API_BASE}/api/config`);
-                const cfg = await res.json();
-                document.getElementById('cfgProvider').value = cfg.provider || 'ollama';
-                document.getElementById('cfgOllamaUrl').value = cfg.ollama_url || 'http://127.0.0.1:11434';
-                document.getElementById('cfgOllamaModel').value = cfg.ollama_model || 'llama3:8b';
-                document.getElementById('cfgOpenaiKey').value = cfg.openai_api_key || '';
-                document.getElementById('cfgOpenaiModel').value = cfg.openai_model || 'gpt-4o-mini';
+      const formData = new FormData();
+      formData.append('submission_file', document.getElementById('subFile').files[0]);
+      formData.append('calibration_file', document.getElementById('calFile').files[0]);
+      formData.append('template_type', document.getElementById('templateType').value);
 
-                document.getElementById('aiActiveBadge').innerHTML = `<i class="bi bi-robot me-1"></i>AI Engine: ${cfg.provider.toUpperCase()} (${cfg.ollama_model || 'Rules'})`;
-                toggleProviderFields();
-            } catch (err) {
-                console.error("Failed to load config", err);
-            }
+      try {
+        const res = await fetch('/api/process', { method: 'POST', body: formData });
+        const data = await res.json();
+        btn.disabled = false;
+        btn.textContent = 'Process Submission & Validate';
+
+        if (res.ok) {
+          document.getElementById('outputContainer').innerHTML = `
+            <div class="alert alert-success fw-bold">Validation Status: ${data.validation.status}</div>
+            <p><strong>Job ID:</strong> ${data.job_id}</p>
+            <p><strong>Customer:</strong> ${data.sub_data.customer || 'N/A'}</p>
+            <p><strong>Equipment:</strong> ${data.sub_data.equipment || 'N/A'}</p>
+            <p><strong>AI Review:</strong> ${data.ai_review ? data.ai_review.summary : 'Completed'}</p>
+            <a href="${data.download_url}" class="btn btn-success w-100 fw-bold" target="_blank">Download Generated Certificate (.docx)</a>
+          `;
+          loadAudit();
+        } else {
+          alert('Error: ' + (data.detail || 'Processing failed'));
         }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Process Submission & Validate';
+        alert('Network Error: ' + err.message);
+      }
+    });
 
-        function toggleProviderFields() {
-            const provider = document.getElementById('cfgProvider').value;
-            document.getElementById('ollamaFields').style.display = provider === 'ollama' ? 'block' : 'none';
-            document.getElementById('openaiFields').style.display = provider === 'openai' ? 'block' : 'none';
-        }
-
-        async function testAIConnection() {
-            const resultSpan = document.getElementById('aiTestResult');
-            resultSpan.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>Testing connection...`;
-
-            const payload = {
-                provider: document.getElementById('cfgProvider').value,
-                ollama_url: document.getElementById('cfgOllamaUrl').value,
-                ollama_model: document.getElementById('cfgOllamaModel').value,
-                openai_api_key: document.getElementById('cfgOpenaiKey').value,
-                openai_model: document.getElementById('cfgOpenaiModel').value
-            };
-
-            try {
-                const res = await fetch(`${API_BASE}/api/config/test-ai`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (data.status === 'CONNECTED') {
-                    resultSpan.className = 'small fw-semibold text-success';
-                    resultSpan.textContent = `✓ ${data.message}`;
-                } else if (data.status === 'OFFLINE_FALLBACK') {
-                    resultSpan.className = 'small fw-semibold text-warning';
-                    resultSpan.textContent = `⚠️ ${data.message}`;
-                } else {
-                    resultSpan.className = 'small fw-semibold text-danger';
-                    resultSpan.textContent = `❌ ${data.message}`;
-                }
-            } catch (err) {
-                resultSpan.className = 'small fw-semibold text-danger';
-                resultSpan.textContent = `Error: ${err.message}`;
-            }
-        }
-
-        async function saveAIConfig() {
-            const payload = {
-                provider: document.getElementById('cfgProvider').value,
-                ollama_url: document.getElementById('cfgOllamaUrl').value,
-                ollama_model: document.getElementById('cfgOllamaModel').value,
-                openai_api_key: document.getElementById('cfgOpenaiKey').value,
-                openai_model: document.getElementById('cfgOpenaiModel').value
-            };
-
-            try {
-                const res = await fetch(`${API_BASE}/api/config`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
-                if (res.ok) {
-                    alert("AI Configuration saved successfully!");
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('aiSettingsModal'));
-                    if (modal) modal.hide();
-                    loadAIConfig();
-                    loadAuditTrail();
-                }
-            } catch (err) {
-                alert(`Error saving configuration: ${err.message}`);
-            }
-        }
-
-        document.getElementById('processForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const subFile = document.getElementById('submissionFile').files[0];
-            const calFile = document.getElementById('calibrationFile').files[0];
-            const templateType = document.getElementById('templateType').value;
-
-            if (!subFile || !calFile) {
-                alert("Please select both submission and calibration files.");
-                return;
-            }
-
-            const btn = document.getElementById('btnProcess');
-            btn.disabled = true;
-            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Processing & Validating...`;
-
-            const formData = new FormData();
-            formData.append('submission_file', subFile);
-            formData.append('calibration_file', calFile);
-            formData.append('template_type', templateType);
-
-            try {
-                const res = await fetch(`${API_BASE}/api/process`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-                btn.disabled = false;
-                btn.innerHTML = `<i class="bi bi-gear-wide-connected me-2"></i>Process Submission & Validate`;
-
-                if (res.ok) {
-                    displayResult(data);
-                    loadAuditTrail();
-                } else {
-                    alert(`Error: ${data.detail || 'Processing failed'}`);
-                }
-            } catch (err) {
-                btn.disabled = false;
-                btn.innerHTML = `<i class="bi bi-gear-wide-connected me-2"></i>Process Submission & Validate`;
-                alert(`Network error: ${err.message}`);
-            }
+    async function loadAudit() {
+      try {
+        const res = await fetch('/api/audit');
+        const data = await res.json();
+        const tbody = document.getElementById('auditBody');
+        tbody.innerHTML = '';
+        data.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.id}</td>
+            <td class="fw-bold">${item.job_id}</td>
+            <td>${new Date(item.timestamp).toLocaleString()}</td>
+            <td><span class="badge bg-primary">${item.event}</span></td>
+            <td><span class="text-success font-bold">${item.data.validation || 'PASS'}</span></td>
+            <td class="audit-hash text-info">${(item.hash || '').substring(0, 16)}...</td>
+          `;
+          tbody.appendChild(tr);
         });
-
-        function displayResult(data) {
-            document.getElementById('placeholderResult').style.display = 'none';
-            document.getElementById('activeResult').style.display = 'block';
-
-            const val = data.validation;
-            const meta = data.extracted_metadata;
-
-            const alertBox = document.getElementById('statusAlert');
-            const statusTitle = document.getElementById('statusTitle');
-
-            if (val.status === 'PASS') {
-                alertBox.className = 'alert alert-success d-flex align-items-center mb-3';
-                statusTitle.textContent = 'Validation Status: PASS';
-            } else if (val.status === 'REVIEW') {
-                alertBox.className = 'alert alert-warning d-flex align-items-center mb-3';
-                statusTitle.textContent = 'Validation Status: REVIEW REQUIRED';
-            } else {
-                alertBox.className = 'alert alert-danger d-flex align-items-center mb-3';
-                statusTitle.textContent = 'Validation Status: FAIL';
-            }
-
-            document.getElementById('resCustomer').textContent = meta.customer || 'N/A';
-            document.getElementById('resEquipment').textContent = meta.equipment || 'N/A';
-            document.getElementById('resSerial').textContent = meta.serial || 'N/A';
-            document.getElementById('resDate').textContent = meta.calibration_date || 'N/A';
-            document.getElementById('resTechnician').textContent = meta.technician || 'N/A';
-            document.getElementById('resEnv').textContent = `${meta.temperature || 21.5} °C / ${meta.humidity || 45.0} % RH`;
-
-            const checksList = document.getElementById('isoChecksList');
-            checksList.innerHTML = '';
-            for (const [check, passed] of Object.entries(val.iso4037_checks)) {
-                const li = document.createElement('li');
-                li.className = 'list-group-item d-flex justify-content-between align-items-center py-1 px-2';
-                li.innerHTML = `<span>${check.replace(/_/g, ' ')}</span>
-                    <span class="badge ${passed ? 'bg-success' : 'bg-danger'}">${passed ? 'PASSED' : 'FLAGGED'}</span>`;
-                checksList.appendChild(li);
-            }
-
-            document.getElementById('btnDownload').href = `${API_BASE}${data.download_url}`;
-            document.getElementById('resHash').textContent = data.audit_hash;
-        }
-
-        async function loadAuditTrail() {
-            try {
-                const res = await fetch(`${API_BASE}/api/audit`);
-                const data = await res.json();
-                const tbody = document.getElementById('auditTableBody');
-                tbody.innerHTML = '';
-
-                if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No audit records found.</td></tr>`;
-                    return;
-                }
-
-                data.forEach(item => {
-                    const tr = document.createElement('tr');
-                    const statusClass = item.data.validation_status === 'PASS' ? 'status-pass' : 'status-review';
-                    tr.innerHTML = `
-                        <td>${item.id}</td>
-                        <td class="fw-bold">${item.job_id}</td>
-                        <td>${new Date(item.timestamp).toLocaleString()}</td>
-                        <td><span class="badge bg-primary">${item.event}</span></td>
-                        <td><span class="${statusClass}">${item.data.validation_status || item.data.error || 'N/A'}</span></td>
-                        <td class="audit-hash text-muted">${(item.prev_hash || '').substring(0, 12)}...</td>
-                        <td class="audit-hash text-success">${(item.hash || '').substring(0, 16)}...</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (err) {
-                console.error("Failed to load audit trail", err);
-            }
-        }
-
-        // Initial loads
-        loadAIConfig();
-        loadAuditTrail();
-    </script>
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadAudit();
+  </script>
 </body>
 </html>
