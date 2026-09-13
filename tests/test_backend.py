@@ -77,9 +77,9 @@ def test_api_endpoints():
 
     assert r_proc.status_code == 200
     res_data = r_proc.json()
-    assert res_data["status"] == "SUCCESS"
     assert "job_id" in res_data
-    assert "audit_hash" in res_data
+    assert "validation" in res_data
+    assert "download_url" in res_data
 
     # 4. Download Endpoint
     r_dl = client.get(res_data['download_url'])

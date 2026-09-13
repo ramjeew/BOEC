@@ -1,15 +1,6 @@
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [187039]
-INFO:     Started server process [202384]
+INFO:     Started server process [79964]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:49004 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49008 - "GET /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49014 - "POST /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49016 - "POST /api/config/test-ai HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49032 - "POST /api/process HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49048 - "GET /api/download/efbccbfe HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49064 - "GET /api/audit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57508 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57518 - "GET /api/llama-status HTTP/1.1" 200 OK

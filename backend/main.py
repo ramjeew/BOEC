@@ -1,27 +1,36 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import os
 import shutil
 import uuid
 import tempfile
-from typing import Dict, Any
 from backend.parser import parse_excel
 from backend.validation import validate_calibration_data
 from backend.certificate import generate_certificate
 from backend.audit import log_event, get_audit_trail
-from backend.ai_agent import load_config, save_config, test_ai_connection, ai_extract_metadata
+from backend.llm_agent import ai_review, get_llama_client
+from backend.ai_agent import load_config, save_config, test_ai_connection
 
 app = FastAPI(
     title="BOEC AI Workflow Agent",
-    version="5.0.0",
-    description="SANAS Accredited Calibration Lab - MCC15-07 / MCC16-07 Automation Pipeline"
+    version="2.0.0",
+    description="SANAS Accredited Calibration Lab - MCC15-07/MCC16-07 Automation + Llama API"
 )
 
+# FIXED CORS - allow frontend origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://boec-calibration-agent.onrender.com",
+        "https://ramjeew-boec.onrender.com",
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+        "*"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,15 +42,13 @@ os.makedirs(CERTS_DIR, exist_ok=True)
 
 @app.get("/health")
 async def health():
-    cfg = load_config()
+    llama = get_llama_client() is not None
     return {
         "status": "online",
-        "mode": "POPIA-safe local",
-        "ai_provider": cfg.get("provider", "ollama"),
-        "ollama_model": cfg.get("ollama_model", "llama3:8b"),
-        "sanas_accreditation": "CAL-2024-07",
-        "standards": ["SANAS TR-18", "ISO4037-3:2019", "ISO/IEC 17025:2017"],
-        "target_hardware": "BOEC Ryzen 5 8600G (32GB DDR5)"
+        "mode": "POPIA-safe local" if not llama else "Llama API hybrid",
+        "sanas": "ready",
+        "llama_configured": llama,
+        "version": "2.0.0"
     }
 
 @app.get("/api/config")
@@ -49,15 +56,25 @@ async def get_configuration():
     return load_config()
 
 @app.post("/api/config")
-async def update_configuration(config: Dict[str, Any] = Body(...)):
+async def update_configuration(config: dict):
     updated = save_config(config)
     await log_event("SYS_CONFIG", "CONFIG_UPDATE", {"provider": updated.get("provider"), "model": updated.get("ollama_model")})
     return {"status": "SUCCESS", "config": updated}
 
 @app.post("/api/config/test-ai")
-async def test_ai_settings(config: Dict[str, Any] = Body(None)):
+async def test_ai_settings(config: dict = None):
     res = test_ai_connection(config)
     return res
+
+@app.get("/api/llama-status")
+async def llama_status():
+    client = get_llama_client()
+    return {
+        "configured": client is not None,
+        "model": os.getenv("LLAMA_MODEL", "Llama-4-Maverick"),
+        "has_key": bool(os.getenv("LLAMA_API_KEY")),
+        "mode": "live" if client else "local-fallback"
+    }
 
 @app.post("/api/process")
 async def process_submission(
@@ -68,66 +85,49 @@ async def process_submission(
     job_id = str(uuid.uuid4())[:8]
     temp_dir = tempfile.mkdtemp()
     try:
-        sub_path = os.path.join(temp_dir, f"{job_id}_submission.xlsx")
-        cal_path = os.path.join(temp_dir, f"{job_id}_calibration.xlsx")
-
+        # Save uploads
+        sub_path = os.path.join(temp_dir, f"{job_id}_sub.xlsx")
+        cal_path = os.path.join(temp_dir, f"{job_id}_cal.xlsx")
         with open(sub_path, "wb") as f:
             shutil.copyfileobj(submission_file.file, f)
         with open(cal_path, "wb") as f:
             shutil.copyfileobj(calibration_file.file, f)
 
-        # Stage 2: Data Extraction
+        # Parse
         sub_data = parse_excel(sub_path)
         cal_data = parse_excel(cal_path)
 
-        # Merge extracted metadata
-        merged_data = {**sub_data, **cal_data}
+        # Validate ISO4037-3 + BOEC rules
+        validation = validate_calibration_data(cal_data)
 
-        # Optional AI Extraction enhancement
-        ai_extracted = ai_extract_metadata(str(merged_data.get("raw_sheets", {})))
-        for k, v in ai_extracted.items():
-            if v and not merged_data.get(k):
-                merged_data[k] = v
+        # NEW: Llama AI review (non-blocking, POPIA-safe fallback)
+        ai_result = ai_review(validation, sub_data, cal_data)
+        validation["ai_review"] = ai_result
 
-        # Stage 3: ISO4037-3 & SANAS Validation
-        validation = validate_calibration_data(merged_data)
-
-        # Stage 4: Certificate Generation
-        output_filename = f"BOEC_CERT_{job_id}.docx"
-        output_path = os.path.join(CERTS_DIR, output_filename)
+        # Generate certificate (MCC15-07 / MCC16-07)
+        output_path = os.path.join(CERTS_DIR, f"BOEC_CERT_{job_id}.docx")
         generate_certificate(sub_data, cal_data, validation, template_type, output_path)
 
-        # Stage 5: Hash-chained Audit Log Entry
-        audit_hash = await log_event(job_id, "PROCESS", {
+        # Audit trail (hash-chained)
+        await log_event(job_id, "PROCESS", {
             "template": template_type,
-            "validation_status": validation["status"],
-            "customer": merged_data.get("customer"),
-            "serial": merged_data.get("serial"),
-            "certificate_file": output_filename
+            "validation": validation["status"],
+            "ai_mode": ai_result.get("mode")
         })
 
         return {
             "job_id": job_id,
-            "status": "SUCCESS",
             "validation": validation,
-            "extracted_metadata": {
-                "customer": merged_data.get("customer"),
-                "equipment": merged_data.get("equipment"),
-                "serial": merged_data.get("serial"),
-                "calibration_date": merged_data.get("date"),
-                "technician": merged_data.get("technician"),
-                "temperature": merged_data.get("temperature"),
-                "humidity": merged_data.get("humidity"),
-                "pressure": merged_data.get("pressure")
-            },
+            "sub_data": sub_data,
+            "cal_data_summary": {k: str(v)[:200] for k,v in list(cal_data.items())[:20]} if isinstance(cal_data, dict) else str(cal_data)[:1000],
             "certificate_path": output_path,
-            "audit_hash": audit_hash,
-            "download_url": f"/api/download/{job_id}"
+            "download_url": f"/api/download/{job_id}",
+            "ai_review": ai_result
         }
 
     except Exception as e:
         await log_event(job_id, "ERROR", {"error": str(e)})
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(500, str(e))
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -138,27 +138,14 @@ async def audit(limit: int = 100):
 @app.get("/api/certificates")
 async def list_certs():
     files = os.listdir(CERTS_DIR) if os.path.exists(CERTS_DIR) else []
-    certs = []
-    for f in sorted(files, reverse=True):
-        if f.endswith(".docx"):
-            job_id = f.replace("BOEC_CERT_", "").replace(".docx", "")
-            certs.append({
-                "job_id": job_id,
-                "filename": f,
-                "download_url": f"/api/download/{job_id}"
-            })
-    return {"certificates": certs}
+    return {"certificates": files}
 
 @app.get("/api/download/{job_id}")
 async def download(job_id: str):
     path = os.path.join(CERTS_DIR, f"BOEC_CERT_{job_id}.docx")
     if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Calibration certificate not found")
-    return FileResponse(
-        path,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        filename=f"BOEC_Calibration_Certificate_{job_id}.docx"
-    )
+        raise HTTPException(404, "Certificate not found")
+    return FileResponse(path, filename=f"BOEC_Calibration_Certificate_{job_id}.docx")
 
 if os.path.exists("frontend"):
     app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
