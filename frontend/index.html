@@ -35,26 +35,28 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
+    const nowTs = new Date().toLocaleString("en-ZA", { hour12: false }).replace(",", "") + " SAST";
+
     const mockIntake = [
-      { id: "1", name: "BOEC-REM-2024-084_CLIENT.xlsx", type: "submission", size: "42.8 KB", ts: "2024-11-14 08:23:11 SAST", checksum: "a3f9c1e2b4d6...", status: "validated" },
-      { id: "2", name: "BOEC-REM-2024-084_RAW.xlsx", type: "rawdata", size: "128.4 KB", ts: "2024-11-14 08:23:44 SAST", checksum: "f8e2a9c7d1b3...", status: "validated" }
+      { id: "1", name: "BOEC-REM-2024-084_CLIENT.xlsx", type: "submission", size: "42.8 KB", ts: "2024-11-14 08:23:11 SAST", imported_at: "2024-11-14 08:23:11 SAST", checksum: "a3f9c1e2b4d6...", status: "validated" },
+      { id: "2", name: "BOEC-REM-2024-084_RAW.xlsx", type: "rawdata", size: "128.4 KB", ts: "2024-11-14 08:23:44 SAST", imported_at: "2024-11-14 08:23:44 SAST", checksum: "f8e2a9c7d1b3...", status: "validated" }
     ];
 
     const mockExtracted = [
-      { field: "Client Name", source: "Submission!B4", value: "Eskom Koeberg Nuclear Power Station", confidence: 99.2, editable: true, flag: "ok" },
-      { field: "Instrument ID", source: "Submission!B7", value: "BOEC-REM-2024-084", confidence: 100.0, editable: false, flag: "ok" },
-      { field: "Instrument Model", source: "Submission!B8", value: "Thermo Fisher RadEye PRD-ER", confidence: 98.5, editable: true, flag: "ok" },
-      { field: "Serial Number", source: "Submission!B9", value: "PRD-ER-88471", confidence: 99.8, editable: true, flag: "ok" },
-      { field: "Calibration Date", source: "RawData!A2", value: "2024-11-14", confidence: 100.0, editable: true, flag: "ok" },
-      { field: "Technician", source: "Submission!B12", value: "J. Van der Merwe (SANAS Auth: TM-042)", confidence: 97.3, editable: true, flag: "ok" },
-      { field: "Environmental - Temp", source: "RawData!D2:D8 avg", value: "21.3 °C", confidence: 96.1, editable: true, flag: "ok" },
-      { field: "Environmental - Humidity", source: "RawData!E2:E8 avg", value: "48.2 %RH", confidence: 95.8, editable: true, flag: "ok" },
-      { field: "Environmental - Pressure", source: "RawData!F2:F8", value: "1012.4 hPa", confidence: 94.7, editable: true, flag: "warn" },
-      { field: "Ref Standard", source: "Submission!B15", value: "Cs-137 S/N CS-2023-11 (Traceable to NMISA)", confidence: 99.0, editable: false, flag: "ok" },
-      { field: "Procedure", source: "Registry", value: "CP-02-08 Rev 4.2 / CP-03-07 Rev 2.1", confidence: 100.0, editable: false, flag: "ok" },
-      { field: "Irradiation 0.5 mSv/h", source: "RawData!B2", value: "0.512 mSv/h (ref 0.500)", confidence: 98.9, editable: true, flag: "ok" },
-      { field: "Irradiation 2 mSv/h", source: "RawData!B3", value: "2.043 mSv/h (ref 2.000)", confidence: 98.7, editable: true, flag: "ok" },
-      { field: "Irradiation 10 mSv/h", source: "RawData!B4", value: "10.18 mSv/h (ref 10.00)", confidence: 98.2, editable: true, flag: "ok" }
+      { field: "Client Name", source: "Submission!B4", value: "Eskom Koeberg Nuclear Power Station", confidence: 99.2, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Instrument ID", source: "Submission!B7", value: "BOEC-REM-2024-084", confidence: 100.0, editable: false, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Instrument Model", source: "Submission!B8", value: "Thermo Fisher RadEye PRD-ER", confidence: 98.5, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Serial Number", source: "Submission!B9", value: "PRD-ER-88471", confidence: 99.8, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Calibration Date", source: "RawData!A2", value: "2024-11-14", confidence: 100.0, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Technician", source: "Submission!B12", value: "J. Van der Merwe (SANAS Auth: TM-042)", confidence: 97.3, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Environmental - Temp", source: "RawData!D2:D8 avg", value: "21.3 °C", confidence: 96.1, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Environmental - Humidity", source: "RawData!E2:E8 avg", value: "48.2 %RH", confidence: 95.8, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Environmental - Pressure", source: "RawData!F2:F8", value: "1012.4 hPa", confidence: 94.7, editable: true, flag: "warn", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Ref Standard", source: "Submission!B15", value: "Cs-137 S/N CS-2023-11 (Traceable to NMISA)", confidence: 99.0, editable: false, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Procedure", source: "Registry", value: "CP-02-08 Rev 4.2 / CP-03-07 Rev 2.1", confidence: 100.0, editable: false, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Irradiation 0.5 mSv/h", source: "RawData!B2", value: "0.512 mSv/h (ref 0.500)", confidence: 98.9, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Irradiation 2 mSv/h", source: "RawData!B3", value: "2.043 mSv/h (ref 2.000)", confidence: 98.7, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Irradiation 10 mSv/h", source: "RawData!B4", value: "10.18 mSv/h (ref 10.00)", confidence: 98.2, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" }
     ];
 
     const mockValidation = [
@@ -541,14 +543,14 @@
                     </div>
                   </div>
 
-                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
-                    <table className="w-full text-left text-xs">
+                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-x-auto">
+                    <table className="w-full text-left text-xs min-w-[650px]">
                       <thead className="bg-zinc-800/60 mono text-[10px] text-zinc-400 uppercase">
                         <tr>
                           <th className="p-3">File Name</th>
                           <th className="p-3">Type</th>
                           <th className="p-3">Size</th>
-                          <th className="p-3">Timestamp</th>
+                          <th className="p-3">Imported At</th>
                           <th className="p-3">SHA256 Checksum</th>
                           <th className="p-3">Status</th>
                         </tr>
@@ -559,7 +561,7 @@
                             <td className="p-3 font-semibold text-zinc-200">{f.name}</td>
                             <td className="p-3"><span className="mono text-[10px] px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700">{f.type}</span></td>
                             <td className="p-3 text-zinc-400">{f.size}</td>
-                            <td className="p-3 text-zinc-400">{f.ts}</td>
+                            <td className="p-3 mono text-amber-400/90 text-[11px]">{f.imported_at || f.ts}</td>
                             <td className="p-3 mono text-amber-400">{f.checksum}</td>
                             <td className="p-3"><span className="text-emerald-400 font-semibold">{f.status}</span></td>
                           </tr>
@@ -593,14 +595,15 @@
                     />
                   </div>
 
-                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
-                    <table className="w-full text-left text-xs">
+                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-x-auto">
+                    <table className="w-full text-left text-xs min-w-[700px]">
                       <thead className="bg-zinc-800/60 mono text-[10px] text-zinc-400 uppercase">
                         <tr>
                           <th className="p-3">Field Name</th>
                           <th className="p-3">Cell Source</th>
                           <th className="p-3">Extracted Value</th>
-                          <th className="p-3">Confidence Score</th>
+                          <th className="p-3">Extracted At</th>
+                          <th className="p-3">Confidence</th>
                           <th className="p-3">Flag</th>
                         </tr>
                       </thead>
@@ -621,6 +624,7 @@
                                 className="bg-zinc-800/80 border border-zinc-700/80 rounded px-2 py-1 text-xs text-amber-300 w-full focus:outline-none focus:border-amber-500"
                               />
                             </td>
+                            <td className="p-3 mono text-amber-400/90 text-[10px]">{item.extracted_at || "2024-11-14 08:24:02 SAST"}</td>
                             <td className="p-3">
                               <div className="flex items-center gap-2">
                                 <div className="w-16 bg-zinc-800 h-1.5 rounded-full overflow-hidden">
@@ -705,9 +709,10 @@
                         <h2 className="font-bold text-lg">BOEC ENGINEERING CONSULTANTS</h2>
                         <p className="text-xs text-zinc-600 font-sans">SANAS Accredited Calibration Laboratory CAL-2024-07</p>
                       </div>
-                      <div className="text-right text-xs font-sans">
-                        <div className="font-bold">CERTIFICATE NO: {generatedCert?.cert_no || "BOEC-CAL-2024-084"}</div>
+                      <div className="text-right text-xs font-sans space-y-0.5">
+                        <div className="font-bold text-sm">CERTIFICATE NO: {generatedCert?.cert_no || "BOEC-CAL-2024-084"}</div>
                         <div className="text-zinc-500">Template: {selectedTemplate}</div>
+                        <div className="mono text-[10px] text-zinc-600">Generated: {generatedCert?.created_at || nowTs}</div>
                       </div>
                     </div>
 
