@@ -98,6 +98,7 @@ async def upload_files(
             "type": "submission",
             "size": f"{round(len(sub_bytes)/1024, 1)} KB",
             "ts": ts,
+            "imported_at": ts,
             "checksum": f"sha256:{sub_hash}...",
             "status": "validated",
             "path": sub_path
@@ -108,6 +109,7 @@ async def upload_files(
             "type": "rawdata",
             "size": f"{round(len(raw_bytes)/1024, 1)} KB",
             "ts": ts,
+            "imported_at": ts,
             "checksum": f"sha256:{raw_hash}...",
             "status": "validated",
             "path": raw_path
@@ -119,13 +121,15 @@ async def upload_files(
         "files": files_meta,
         "sub_path": sub_path,
         "raw_path": raw_path,
+        "imported_at": ts,
         "created_at": ts
     }
 
-    await log_event(job_id, "INTAKE_VALIDATED", {"files": [f["name"] for f in files_meta]})
+    await log_event(job_id, "INTAKE_VALIDATED", {"files": [f["name"] for f in files_meta], "imported_at": ts})
 
     return {
         "job_id": job_id,
+        "imported_at": ts,
         "files": files_meta
     }
 
@@ -133,6 +137,7 @@ async def upload_files(
 async def extract_fields(payload: Dict[str, Any] = Body(...)):
     job_id = payload.get("job_id")
     job = jobs_store.get(job_id)
+    extracted_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S SAST")
 
     if job and os.path.exists(job.get("sub_path", "")) and os.path.exists(job.get("raw_path", "")):
         sub_parsed = parse_excel(job["sub_path"])
@@ -140,41 +145,41 @@ async def extract_fields(payload: Dict[str, Any] = Body(...)):
         merged = {**sub_parsed, **raw_parsed}
 
         extracted_fields = [
-            {"field": "Client Name", "source": "Submission!B4", "value": merged.get("customer") or "Eskom Koeberg Nuclear Power Station", "confidence": 99.2, "editable": True, "flag": "ok"},
-            {"field": "Instrument ID", "source": "Submission!B7", "value": merged.get("serial") or "BOEC-REM-2024-084", "confidence": 100.0, "editable": False, "flag": "ok"},
-            {"field": "Instrument Model", "source": "Submission!B8", "value": merged.get("equipment") or "Thermo Fisher RadEye PRD-ER", "confidence": 98.5, "editable": True, "flag": "ok"},
-            {"field": "Serial Number", "source": "Submission!B9", "value": merged.get("serial") or "PRD-ER-88471", "confidence": 99.8, "editable": True, "flag": "ok"},
-            {"field": "Calibration Date", "source": "RawData!A2", "value": merged.get("date") or "2024-11-14", "confidence": 100.0, "editable": True, "flag": "ok"},
-            {"field": "Technician", "source": "Submission!B12", "value": merged.get("technician") or "J. Van der Merwe (SANAS Auth: TM-042)", "confidence": 97.3, "editable": True, "flag": "ok"},
-            {"field": "Environmental - Temp", "source": "RawData!D2:D8 avg", "value": f"{merged.get('temperature', 21.3)} °C", "confidence": 96.1, "editable": True, "flag": "ok"},
-            {"field": "Environmental - Humidity", "source": "RawData!E2:E8 avg", "value": f"{merged.get('humidity', 48.2)} %RH", "confidence": 95.8, "editable": True, "flag": "ok"},
-            {"field": "Environmental - Pressure", "source": "RawData!F2:F8", "value": f"{merged.get('pressure', 1012.4)} hPa", "confidence": 94.7, "editable": True, "flag": "warn"},
-            {"field": "Ref Standard", "source": "Submission!B15", "value": merged.get("reference_standard") or "Cs-137 S/N CS-2023-11 (Traceable to NMISA)", "confidence": 99.0, "editable": False, "flag": "ok"},
-            {"field": "Procedure", "source": "Registry", "value": merged.get("procedure_ref") or "CP-02-08 Rev 4.2 / CP-03-07 Rev 2.1", "confidence": 100.0, "editable": False, "flag": "ok"},
-            {"field": "Irradiation 0.5 mSv/h", "source": "RawData!B2", "value": "0.512 mSv/h (ref 0.500)", "confidence": 98.9, "editable": True, "flag": "ok"},
-            {"field": "Irradiation 2 mSv/h", "source": "RawData!B3", "value": "2.043 mSv/h (ref 2.000)", "confidence": 98.7, "editable": True, "flag": "ok"},
-            {"field": "Irradiation 10 mSv/h", "source": "RawData!B4", "value": "10.18 mSv/h (ref 10.00)", "confidence": 98.2, "editable": True, "flag": "ok"}
+            {"field": "Client Name", "source": "Submission!B4", "value": merged.get("customer") or "Eskom Koeberg Nuclear Power Station", "confidence": 99.2, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Instrument ID", "source": "Submission!B7", "value": merged.get("serial") or "BOEC-REM-2024-084", "confidence": 100.0, "editable": False, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Instrument Model", "source": "Submission!B8", "value": merged.get("equipment") or "Thermo Fisher RadEye PRD-ER", "confidence": 98.5, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Serial Number", "source": "Submission!B9", "value": merged.get("serial") or "PRD-ER-88471", "confidence": 99.8, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Calibration Date", "source": "RawData!A2", "value": merged.get("date") or "2024-11-14", "confidence": 100.0, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Technician", "source": "Submission!B12", "value": merged.get("technician") or "J. Van der Merwe (SANAS Auth: TM-042)", "confidence": 97.3, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Environmental - Temp", "source": "RawData!D2:D8 avg", "value": f"{merged.get('temperature', 21.3)} °C", "confidence": 96.1, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Environmental - Humidity", "source": "RawData!E2:E8 avg", "value": f"{merged.get('humidity', 48.2)} %RH", "confidence": 95.8, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Environmental - Pressure", "source": "RawData!F2:F8", "value": f"{merged.get('pressure', 1012.4)} hPa", "confidence": 94.7, "editable": True, "flag": "warn", "extracted_at": extracted_at},
+            {"field": "Ref Standard", "source": "Submission!B15", "value": merged.get("reference_standard") or "Cs-137 S/N CS-2023-11 (Traceable to NMISA)", "confidence": 99.0, "editable": False, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Procedure", "source": "Registry", "value": merged.get("procedure_ref") or "CP-02-08 Rev 4.2 / CP-03-07 Rev 2.1", "confidence": 100.0, "editable": False, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Irradiation 0.5 mSv/h", "source": "RawData!B2", "value": "0.512 mSv/h (ref 0.500)", "confidence": 98.9, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Irradiation 2 mSv/h", "source": "RawData!B3", "value": "2.043 mSv/h (ref 2.000)", "confidence": 98.7, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Irradiation 10 mSv/h", "source": "RawData!B4", "value": "10.18 mSv/h (ref 10.00)", "confidence": 98.2, "editable": True, "flag": "ok", "extracted_at": extracted_at}
         ]
     else:
         extracted_fields = [
-            {"field": "Client Name", "source": "Submission!B4", "value": "Eskom Koeberg Nuclear Power Station", "confidence": 99.2, "editable": True, "flag": "ok"},
-            {"field": "Instrument ID", "source": "Submission!B7", "value": "BOEC-REM-2024-084", "confidence": 100.0, "editable": False, "flag": "ok"},
-            {"field": "Instrument Model", "source": "Submission!B8", "value": "Thermo Fisher RadEye PRD-ER", "confidence": 98.5, "editable": True, "flag": "ok"},
-            {"field": "Serial Number", "source": "Submission!B9", "value": "PRD-ER-88471", "confidence": 99.8, "editable": True, "flag": "ok"},
-            {"field": "Calibration Date", "source": "RawData!A2", "value": "2024-11-14", "confidence": 100.0, "editable": True, "flag": "ok"},
-            {"field": "Technician", "source": "Submission!B12", "value": "J. Van der Merwe (SANAS Auth: TM-042)", "confidence": 97.3, "editable": True, "flag": "ok"},
-            {"field": "Environmental - Temp", "source": "RawData!D2:D8 avg", "value": "21.3 °C", "confidence": 96.1, "editable": True, "flag": "ok"},
-            {"field": "Environmental - Humidity", "source": "RawData!E2:E8 avg", "value": "48.2 %RH", "confidence": 95.8, "editable": True, "flag": "ok"},
-            {"field": "Environmental - Pressure", "source": "RawData!F2:F8", "value": "1012.4 hPa", "confidence": 94.7, "editable": True, "flag": "warn"},
-            {"field": "Ref Standard", "source": "Submission!B15", "value": "Cs-137 S/N CS-2023-11 (Traceable to NMISA)", "confidence": 99.0, "editable": False, "flag": "ok"},
-            {"field": "Procedure", "source": "Registry", "value": "CP-02-08 Rev 4.2 / CP-03-07 Rev 2.1", "confidence": 100.0, "editable": False, "flag": "ok"},
-            {"field": "Irradiation 0.5 mSv/h", "source": "RawData!B2", "value": "0.512 mSv/h (ref 0.500)", "confidence": 98.9, "editable": True, "flag": "ok"},
-            {"field": "Irradiation 2 mSv/h", "source": "RawData!B3", "value": "2.043 mSv/h (ref 2.000)", "confidence": 98.7, "editable": True, "flag": "ok"},
-            {"field": "Irradiation 10 mSv/h", "source": "RawData!B4", "value": "10.18 mSv/h (ref 10.00)", "confidence": 98.2, "editable": True, "flag": "ok"}
+            {"field": "Client Name", "source": "Submission!B4", "value": "Eskom Koeberg Nuclear Power Station", "confidence": 99.2, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Instrument ID", "source": "Submission!B7", "value": "BOEC-REM-2024-084", "confidence": 100.0, "editable": False, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Instrument Model", "source": "Submission!B8", "value": "Thermo Fisher RadEye PRD-ER", "confidence": 98.5, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Serial Number", "source": "Submission!B9", "value": "PRD-ER-88471", "confidence": 99.8, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Calibration Date", "source": "RawData!A2", "value": "2024-11-14", "confidence": 100.0, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Technician", "source": "Submission!B12", "value": "J. Van der Merwe (SANAS Auth: TM-042)", "confidence": 97.3, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Environmental - Temp", "source": "RawData!D2:D8 avg", "value": "21.3 °C", "confidence": 96.1, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Environmental - Humidity", "source": "RawData!E2:E8 avg", "value": "48.2 %RH", "confidence": 95.8, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Environmental - Pressure", "source": "RawData!F2:F8", "value": "1012.4 hPa", "confidence": 94.7, "editable": True, "flag": "warn", "extracted_at": extracted_at},
+            {"field": "Ref Standard", "source": "Submission!B15", "value": "Cs-137 S/N CS-2023-11 (Traceable to NMISA)", "confidence": 99.0, "editable": False, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Procedure", "source": "Registry", "value": "CP-02-08 Rev 4.2 / CP-03-07 Rev 2.1", "confidence": 100.0, "editable": False, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Irradiation 0.5 mSv/h", "source": "RawData!B2", "value": "0.512 mSv/h (ref 0.500)", "confidence": 98.9, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Irradiation 2 mSv/h", "source": "RawData!B3", "value": "2.043 mSv/h (ref 2.000)", "confidence": 98.7, "editable": True, "flag": "ok", "extracted_at": extracted_at},
+            {"field": "Irradiation 10 mSv/h", "source": "RawData!B4", "value": "10.18 mSv/h (ref 10.00)", "confidence": 98.2, "editable": True, "flag": "ok", "extracted_at": extracted_at}
         ]
 
-    await log_event(job_id or "JOB-DEMO", "EXTRACTION_COMPLETE", {"field_count": len(extracted_fields)})
-    return {"extracted": extracted_fields}
+    await log_event(job_id or "JOB-DEMO", "EXTRACTION_COMPLETE", {"field_count": len(extracted_fields), "extracted_at": extracted_at})
+    return {"extracted": extracted_fields, "extracted_at": extracted_at}
 
 @app.post("/api/validate")
 async def validate_fields(payload: Dict[str, Any] = Body(...)):
@@ -236,12 +241,13 @@ async def sign_cert(payload: Dict[str, Any] = Body(...)):
     operator = payload.get("operator", "J. Van der Merwe TM-042")
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S SAST")
 
-    await log_event(job_id, "FINAL_RELEASE", {"cert_no": cert_no, "operator": operator, "signed": True})
+    await log_event(job_id, "FINAL_RELEASE", {"cert_no": cert_no, "operator": operator, "signed": True, "signed_at": ts})
 
     return {
         "signed": True,
         "signature": operator,
-        "ts": ts
+        "ts": ts,
+        "signed_at": ts
     }
 
 @app.get("/api/audit")

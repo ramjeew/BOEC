@@ -35,26 +35,28 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
+    const nowTs = new Date().toLocaleString("en-ZA", { hour12: false }).replace(",", "") + " SAST";
+
     const mockIntake = [
-      { id: "1", name: "BOEC-REM-2024-084_CLIENT.xlsx", type: "submission", size: "42.8 KB", ts: "2024-11-14 08:23:11 SAST", checksum: "a3f9c1e2b4d6...", status: "validated" },
-      { id: "2", name: "BOEC-REM-2024-084_RAW.xlsx", type: "rawdata", size: "128.4 KB", ts: "2024-11-14 08:23:44 SAST", checksum: "f8e2a9c7d1b3...", status: "validated" }
+      { id: "1", name: "BOEC-REM-2024-084_CLIENT.xlsx", type: "submission", size: "42.8 KB", ts: "2024-11-14 08:23:11 SAST", imported_at: "2024-11-14 08:23:11 SAST", checksum: "a3f9c1e2b4d6...", status: "validated" },
+      { id: "2", name: "BOEC-REM-2024-084_RAW.xlsx", type: "rawdata", size: "128.4 KB", ts: "2024-11-14 08:23:44 SAST", imported_at: "2024-11-14 08:23:44 SAST", checksum: "f8e2a9c7d1b3...", status: "validated" }
     ];
 
     const mockExtracted = [
-      { field: "Client Name", source: "Submission!B4", value: "Eskom Koeberg Nuclear Power Station", confidence: 99.2, editable: true, flag: "ok" },
-      { field: "Instrument ID", source: "Submission!B7", value: "BOEC-REM-2024-084", confidence: 100.0, editable: false, flag: "ok" },
-      { field: "Instrument Model", source: "Submission!B8", value: "Thermo Fisher RadEye PRD-ER", confidence: 98.5, editable: true, flag: "ok" },
-      { field: "Serial Number", source: "Submission!B9", value: "PRD-ER-88471", confidence: 99.8, editable: true, flag: "ok" },
-      { field: "Calibration Date", source: "RawData!A2", value: "2024-11-14", confidence: 100.0, editable: true, flag: "ok" },
-      { field: "Technician", source: "Submission!B12", value: "J. Van der Merwe (SANAS Auth: TM-042)", confidence: 97.3, editable: true, flag: "ok" },
-      { field: "Environmental - Temp", source: "RawData!D2:D8 avg", value: "21.3 °C", confidence: 96.1, editable: true, flag: "ok" },
-      { field: "Environmental - Humidity", source: "RawData!E2:E8 avg", value: "48.2 %RH", confidence: 95.8, editable: true, flag: "ok" },
-      { field: "Environmental - Pressure", source: "RawData!F2:F8", value: "1012.4 hPa", confidence: 94.7, editable: true, flag: "warn" },
-      { field: "Ref Standard", source: "Submission!B15", value: "Cs-137 S/N CS-2023-11 (Traceable to NMISA)", confidence: 99.0, editable: false, flag: "ok" },
-      { field: "Procedure", source: "Registry", value: "CP-02-08 Rev 4.2 / CP-03-07 Rev 2.1", confidence: 100.0, editable: false, flag: "ok" },
-      { field: "Irradiation 0.5 mSv/h", source: "RawData!B2", value: "0.512 mSv/h (ref 0.500)", confidence: 98.9, editable: true, flag: "ok" },
-      { field: "Irradiation 2 mSv/h", source: "RawData!B3", value: "2.043 mSv/h (ref 2.000)", confidence: 98.7, editable: true, flag: "ok" },
-      { field: "Irradiation 10 mSv/h", source: "RawData!B4", value: "10.18 mSv/h (ref 10.00)", confidence: 98.2, editable: true, flag: "ok" }
+      { field: "Client Name", source: "Submission!B4", value: "Eskom Koeberg Nuclear Power Station", confidence: 99.2, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Instrument ID", source: "Submission!B7", value: "BOEC-REM-2024-084", confidence: 100.0, editable: false, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Instrument Model", source: "Submission!B8", value: "Thermo Fisher RadEye PRD-ER", confidence: 98.5, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Serial Number", source: "Submission!B9", value: "PRD-ER-88471", confidence: 99.8, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Calibration Date", source: "RawData!A2", value: "2024-11-14", confidence: 100.0, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Technician", source: "Submission!B12", value: "J. Van der Merwe (SANAS Auth: TM-042)", confidence: 97.3, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Environmental - Temp", source: "RawData!D2:D8 avg", value: "21.3 °C", confidence: 96.1, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Environmental - Humidity", source: "RawData!E2:E8 avg", value: "48.2 %RH", confidence: 95.8, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Environmental - Pressure", source: "RawData!F2:F8", value: "1012.4 hPa", confidence: 94.7, editable: true, flag: "warn", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Ref Standard", source: "Submission!B15", value: "Cs-137 S/N CS-2023-11 (Traceable to NMISA)", confidence: 99.0, editable: false, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Procedure", source: "Registry", value: "CP-02-08 Rev 4.2 / CP-03-07 Rev 2.1", confidence: 100.0, editable: false, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Irradiation 0.5 mSv/h", source: "RawData!B2", value: "0.512 mSv/h (ref 0.500)", confidence: 98.9, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Irradiation 2 mSv/h", source: "RawData!B3", value: "2.043 mSv/h (ref 2.000)", confidence: 98.7, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" },
+      { field: "Irradiation 10 mSv/h", source: "RawData!B4", value: "10.18 mSv/h (ref 10.00)", confidence: 98.2, editable: true, flag: "ok", extracted_at: "2024-11-14 08:24:02 SAST" }
     ];
 
     const mockValidation = [
@@ -401,18 +403,60 @@
                   {/* 4 STAT CARDS */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                      { title: "Total Jobs Today", val: String(intakeFiles.length), sub: "Intake workbooks", icon: "bi-briefcase-fill", color: "text-amber-400" },
-                      { title: "Pending Validation", val: String(activeValidation.filter(v => v.status !== 'pass').length), sub: "Stage 3 Gate", icon: "bi-exclamation-triangle-fill", color: "text-amber-500" },
-                      { title: "Certificates Generated", val: String(liveCerts.length || (generatedCert ? 1 : 12)), sub: "MCC15-07 / MCC16-07", icon: "bi-file-earmark-badge-fill", color: "text-emerald-400" },
-                      { title: "Audit Log Entries", val: String(activeAudit.length), sub: "SHA256 Hash Chained", icon: "bi-database-fill-check", color: "text-blue-400" }
+                      {
+                        title: "Total Jobs Today",
+                        val: String(intakeFiles.length),
+                        sub: "Click to inspect intake files",
+                        icon: "bi-briefcase-fill",
+                        color: "text-amber-400",
+                        targetStage: "stage1",
+                        modalData: { title: "Total Jobs Ingested Today", items: intakeFiles }
+                      },
+                      {
+                        title: "Pending Validation",
+                        val: String(activeValidation.filter(v => v.status !== 'pass').length),
+                        sub: "Click to view Stage 3 checks",
+                        icon: "bi-exclamation-triangle-fill",
+                        color: "text-amber-500",
+                        targetStage: "stage3",
+                        modalData: { title: "Validation Checks Summary", items: activeValidation }
+                      },
+                      {
+                        title: "Certificates Generated",
+                        val: String(liveCerts.length || (generatedCert ? 1 : 12)),
+                        sub: "Click to view MCC15/MCC16 certs",
+                        icon: "bi-file-earmark-badge-fill",
+                        color: "text-emerald-400",
+                        targetStage: "stage4",
+                        modalData: { title: "Generated Certificates Register", items: liveCerts.length > 0 ? liveCerts : [
+                          { cert_no: "BOEC-CAL-2024-084", client: "Eskom Koeberg", model: "Thermo RadEye PRD-ER", date: "2024-11-14", status: "Signed & Released" },
+                          { cert_no: "BOEC-CAL-2024-083", client: "Necsa Pelindaba", model: "Automess 6150AD", date: "2024-11-13", status: "Signed & Released" }
+                        ]}
+                      },
+                      {
+                        title: "Audit Log Entries",
+                        val: String(activeAudit.length),
+                        sub: "Click to view SQLite SHA256 trail",
+                        icon: "bi-database-fill-check",
+                        color: "text-blue-400",
+                        targetStage: "stage5",
+                        modalData: { title: "Audit Trail Records", items: activeAudit }
+                      }
                     ].map((card, i) => (
-                      <div key={i} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 space-y-2">
+                      <div
+                        key={i}
+                        onClick={() => setShowDataModal({ type: "stat", title: card.modalData.title, stage: card.targetStage, data: card.modalData.items })}
+                        className="bg-zinc-900/80 hover:bg-zinc-800/90 border border-zinc-800 hover:border-amber-500/50 cursor-pointer rounded-xl p-4 space-y-2 transition group"
+                      >
                         <div className="flex justify-between items-center">
-                          <span className="mono text-[10px] text-zinc-500 uppercase tracking-widest">{card.title}</span>
-                          <i className={`bi ${card.icon} ${card.color}`}></i>
+                          <span className="mono text-[10px] text-zinc-400 group-hover:text-amber-400 uppercase tracking-widest font-semibold">{card.title}</span>
+                          <i className={`bi ${card.icon} ${card.color} text-lg`}></i>
                         </div>
-                        <div className="text-2xl font-bold text-white mono">{card.val}</div>
-                        <div className="mono text-[10px] text-zinc-400">{card.sub}</div>
+                        <div className="text-2xl font-bold text-white mono flex items-center justify-between">
+                          <span>{card.val}</span>
+                          <i className="bi bi-arrow-right-short text-zinc-500 group-hover:text-amber-400 text-xl transition"></i>
+                        </div>
+                        <div className="mono text-[10px] text-zinc-500 group-hover:text-zinc-300">{card.sub}</div>
                       </div>
                     ))}
                   </div>
@@ -541,14 +585,14 @@
                     </div>
                   </div>
 
-                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
-                    <table className="w-full text-left text-xs">
+                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-x-auto">
+                    <table className="w-full text-left text-xs min-w-[650px]">
                       <thead className="bg-zinc-800/60 mono text-[10px] text-zinc-400 uppercase">
                         <tr>
                           <th className="p-3">File Name</th>
                           <th className="p-3">Type</th>
                           <th className="p-3">Size</th>
-                          <th className="p-3">Timestamp</th>
+                          <th className="p-3">Imported At</th>
                           <th className="p-3">SHA256 Checksum</th>
                           <th className="p-3">Status</th>
                         </tr>
@@ -559,7 +603,7 @@
                             <td className="p-3 font-semibold text-zinc-200">{f.name}</td>
                             <td className="p-3"><span className="mono text-[10px] px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700">{f.type}</span></td>
                             <td className="p-3 text-zinc-400">{f.size}</td>
-                            <td className="p-3 text-zinc-400">{f.ts}</td>
+                            <td className="p-3 mono text-amber-400/90 text-[11px]">{f.imported_at || f.ts}</td>
                             <td className="p-3 mono text-amber-400">{f.checksum}</td>
                             <td className="p-3"><span className="text-emerald-400 font-semibold">{f.status}</span></td>
                           </tr>
@@ -593,14 +637,15 @@
                     />
                   </div>
 
-                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
-                    <table className="w-full text-left text-xs">
+                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-x-auto">
+                    <table className="w-full text-left text-xs min-w-[700px]">
                       <thead className="bg-zinc-800/60 mono text-[10px] text-zinc-400 uppercase">
                         <tr>
                           <th className="p-3">Field Name</th>
                           <th className="p-3">Cell Source</th>
                           <th className="p-3">Extracted Value</th>
-                          <th className="p-3">Confidence Score</th>
+                          <th className="p-3">Extracted At</th>
+                          <th className="p-3">Confidence</th>
                           <th className="p-3">Flag</th>
                         </tr>
                       </thead>
@@ -621,6 +666,7 @@
                                 className="bg-zinc-800/80 border border-zinc-700/80 rounded px-2 py-1 text-xs text-amber-300 w-full focus:outline-none focus:border-amber-500"
                               />
                             </td>
+                            <td className="p-3 mono text-amber-400/90 text-[10px]">{item.extracted_at || "2024-11-14 08:24:02 SAST"}</td>
                             <td className="p-3">
                               <div className="flex items-center gap-2">
                                 <div className="w-16 bg-zinc-800 h-1.5 rounded-full overflow-hidden">
@@ -705,9 +751,10 @@
                         <h2 className="font-bold text-lg">BOEC ENGINEERING CONSULTANTS</h2>
                         <p className="text-xs text-zinc-600 font-sans">SANAS Accredited Calibration Laboratory CAL-2024-07</p>
                       </div>
-                      <div className="text-right text-xs font-sans">
-                        <div className="font-bold">CERTIFICATE NO: {generatedCert?.cert_no || "BOEC-CAL-2024-084"}</div>
+                      <div className="text-right text-xs font-sans space-y-0.5">
+                        <div className="font-bold text-sm">CERTIFICATE NO: {generatedCert?.cert_no || "BOEC-CAL-2024-084"}</div>
                         <div className="text-zinc-500">Template: {selectedTemplate}</div>
+                        <div className="mono text-[10px] text-zinc-600">Generated: {generatedCert?.created_at || nowTs}</div>
                       </div>
                     </div>
 
@@ -872,17 +919,36 @@
           {/* DATA INSPECTION MODAL */}
           {showDataModal && (
             <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="w-[520px] max-w-full rounded-xl border border-zinc-700 bg-zinc-900 p-5 space-y-4 shadow-2xl">
+              <div className="w-[580px] max-w-full rounded-xl border border-zinc-700 bg-zinc-900 p-5 space-y-4 shadow-2xl">
                 <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
-                  <div className="font-bold text-sm text-amber-400">{showDataModal.title}</div>
+                  <div className="font-bold text-sm text-amber-400 flex items-center gap-2">
+                    <i className="bi bi-search text-amber-500"></i>
+                    <span>{showDataModal.title}</span>
+                  </div>
                   <button onClick={() => setShowDataModal(null)} className="text-zinc-400 hover:text-white"><i className="bi bi-x-lg"></i></button>
                 </div>
                 <pre className="mono text-xs text-zinc-300 bg-zinc-800/60 p-3 rounded border border-zinc-800 max-h-80 overflow-auto whitespace-pre-wrap break-all">
                   {JSON.stringify(showDataModal.data, null, 2)}
                 </pre>
-                <button onClick={() => setShowDataModal(null)} className="w-full bg-zinc-800 text-zinc-300 text-xs py-2 rounded-lg border border-zinc-700 hover:bg-zinc-700">
-                  Close Inspector
-                </button>
+                <div className="flex gap-3">
+                  {showDataModal.stage && (
+                    <button
+                      onClick={() => {
+                        const stg = showDataModal.stage;
+                        setShowDataModal(null);
+                        setView(stg);
+                        addAudit(`Navigated to ${stg} from Stat Card modal`, "NAV");
+                      }}
+                      className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs py-2 rounded-lg transition flex items-center justify-center gap-1.5"
+                    >
+                      <span>Open in {showDataModal.stage.toUpperCase()} Stage</span>
+                      <i className="bi bi-arrow-right"></i>
+                    </button>
+                  )}
+                  <button onClick={() => setShowDataModal(null)} className="px-4 bg-zinc-800 text-zinc-300 text-xs py-2 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition">
+                    Close Inspector
+                  </button>
+                </div>
               </div>
             </div>
           )}

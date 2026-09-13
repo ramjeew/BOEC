@@ -66,14 +66,43 @@ def test_api_endpoints():
     assert r_cfg_test.status_code == 200
     assert r_cfg_test.json()["status"] == "CONNECTED"
 
-    # 3. Process Endpoint
+    # 3. Upload & Extract Endpoint with Date Tracking
     with open('samples/submission_sample.xlsx', 'rb') as f_sub, open('samples/calibration_sample.xlsx', 'rb') as f_cal:
         files = {
             'submission_file': ('submission_sample.xlsx', f_sub, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
-            'calibration_file': ('calibration_sample.xlsx', f_cal, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            'rawdata_file': ('calibration_sample.xlsx', f_cal, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         }
-        data = {'template_type': 'MCC15-07'}
-        r_proc = client.post("/api/process", files=files, data=data)
+        r_up = client.post("/api/upload", files=files)
+    assert r_up.status_code == 200
+    up_data = r_up.json()
+    assert "imported_at" in up_data
+    assert "files" in up_data
+    assert "imported_at" in up_data["files"][0]
+
+    r_ext = client.post("/api/extract", json={"job_id": up_data["job_id"], "files": up_data["files"]})
+    assert r_ext.status_code == 200
+    ext_data = r_ext.json()
+    assert "extracted_at" in ext_data
+    assert "extracted_at" in ext_data["extracted"][0]
+
+    r_gen = client.post("/api/generate-cert", json={"job_id": up_data["job_id"], "template": "MCC15-07"})
+    assert r_gen.status_code == 200
+    gen_data = r_gen.json()
+    assert "created_at" in gen_data
+
+    r_sign = client.post("/api/sign", json={"job_id": up_data["job_id"], "cert_no": "BOEC-CAL-2024-084"})
+    assert r_sign.status_code == 200
+    sign_data = r_sign.json()
+    assert "signed_at" in sign_data
+
+    # 4. Process Endpoint
+    with open('samples/submission_sample.xlsx', 'rb') as f_sub2, open('samples/calibration_sample.xlsx', 'rb') as f_cal2:
+        files2 = {
+            'submission_file': ('submission_sample.xlsx', f_sub2, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+            'calibration_file': ('calibration_sample.xlsx', f_cal2, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        }
+        data2 = {'template_type': 'MCC15-07'}
+        r_proc = client.post("/api/process", files=files2, data=data2)
 
     assert r_proc.status_code == 200
     res_data = r_proc.json()
