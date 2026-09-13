@@ -6,7 +6,7 @@ from typing import Dict, Any
 CONFIG_FILE = "storage/config.json"
 
 DEFAULT_CONFIG = {
-    "provider": "ollama",  # "ollama", "openai", or "heuristic"
+    "provider": "heuristic",  # Default to POPIA-safe BOEC Local Rules Engine unless Ollama/OpenAI is explicitly configured
     "ollama_url": "http://127.0.0.1:11434",
     "ollama_model": "llama3:8b",
     "openai_api_key": "",
@@ -22,7 +22,6 @@ def load_config() -> Dict[str, Any]:
     try:
         with open(CONFIG_FILE, "r") as f:
             cfg = json.load(f)
-            # Merge with defaults in case keys are missing
             full_cfg = DEFAULT_CONFIG.copy()
             full_cfg.update(cfg)
             return full_cfg
@@ -41,13 +40,13 @@ def test_ai_connection(config: Dict[str, Any] = None) -> Dict[str, Any]:
     if config is None:
         config = load_config()
 
-    provider = config.get("provider", "ollama")
+    provider = config.get("provider", "heuristic")
 
     if provider == "ollama":
         url = config.get("ollama_url", "http://127.0.0.1:11434").rstrip("/")
         model = config.get("ollama_model", "llama3:8b")
         try:
-            r = requests.get(f"{url}/api/tags", timeout=3)
+            r = requests.get(f"{url}/api/tags", timeout=2)
             if r.status_code == 200:
                 models = [m.get("name") for m in r.json().get("models", [])]
                 return {
@@ -60,15 +59,15 @@ def test_ai_connection(config: Dict[str, Any] = None) -> Dict[str, Any]:
                 }
             else:
                 return {
-                    "status": "ERROR",
+                    "status": "OFFLINE_FALLBACK",
                     "provider": "ollama",
-                    "message": f"Ollama returned HTTP {r.status_code}"
+                    "message": f"Ollama returned HTTP {r.status_code}. Using BOEC local rules extraction engine."
                 }
-        except Exception as e:
+        except Exception:
             return {
                 "status": "OFFLINE_FALLBACK",
                 "provider": "ollama",
-                "message": f"Could not connect to Ollama at {url} ({str(e)}). Falling back to BOEC local rules extraction engine."
+                "message": f"Local Ollama service is offline at {url}. Using BOEC local rules extraction engine."
             }
 
     elif provider == "openai":
@@ -77,10 +76,10 @@ def test_ai_connection(config: Dict[str, Any] = None) -> Dict[str, Any]:
             return {
                 "status": "ERROR",
                 "provider": "openai",
-                "message": "OpenAI API Key is empty."
+                "message": "OpenAI API Key is empty. Please enter a valid sk-... key."
             }
         try:
-            r = requests.get("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {api_key}"}, timeout=4)
+            r = requests.get("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {api_key}"}, timeout=3)
             if r.status_code == 200:
                 return {
                     "status": "CONNECTED",
@@ -91,13 +90,13 @@ def test_ai_connection(config: Dict[str, Any] = None) -> Dict[str, Any]:
                 return {
                     "status": "ERROR",
                     "provider": "openai",
-                    "message": f"OpenAI authentication failed: HTTP {r.status_code}"
+                    "message": f"OpenAI authentication failed (HTTP {r.status_code})."
                 }
         except Exception as e:
             return {
                 "status": "ERROR",
                 "provider": "openai",
-                "message": f"Network error connecting to OpenAI: {str(e)}"
+                "message": f"Network error connecting to OpenAI API: {str(e)}"
             }
 
     else:
@@ -113,7 +112,7 @@ def ai_extract_metadata(text_content: str) -> Dict[str, Any]:
     falling back to rule-based parser.
     """
     cfg = load_config()
-    provider = cfg.get("provider", "ollama")
+    provider = cfg.get("provider", "heuristic")
 
     if provider == "ollama":
         url = cfg.get("ollama_url", "http://127.0.0.1:11434").rstrip("/")
@@ -130,7 +129,7 @@ JSON:"""
                 "prompt": prompt,
                 "stream": False,
                 "format": "json"
-            }, timeout=4)
+            }, timeout=2)
             if r.status_code == 200:
                 res_json = json.loads(r.json().get("response", "{}"))
                 return res_json
