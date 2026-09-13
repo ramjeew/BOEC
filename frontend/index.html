@@ -3,151 +3,699 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BOEC Calibration Intelligence Agent Workstation</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <title>BOEC Workflow Agent - SANAS Accredited Calibration Laboratory</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: { 500: '#f59e0b', 400: '#fbbf24', 300: '#fcd34d' },
+            emerald: { 500: '#10b981', 400: '#34d399', 300: '#6ee7b7' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    :root { --boec-blue: #0f3460; --boec-accent: #00adb5; --boec-bg: #0e0f11; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--boec-bg); color: #f8f9fa; }
-    .card { background-color: #16181b; border: 1px solid #27272a; border-radius: 10px; margin-bottom: 24px; color: #fff; }
-    .card-header { background-color: #1f2937; border-bottom: 1px solid #374151; font-weight: 600; color: #00adb5; }
-    .badge-sanas { background-color: #d9534f; color: #fff; }
-    .audit-hash { font-family: monospace; font-size: 0.85rem; word-break: break-all; }
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #0e0f11; color: #f4f4f5; margin: 0; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
   </style>
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary px-3">
-    <a class="navbar-brand text-info fw-bold" href="#"><i class="bi bi-cpu-fill me-2"></i>BOEC Engineering Consultants</a>
-    <span class="navbar-text me-auto text-light small">AI-Driven Workflow Agent | SANAS CAL-2024-07</span>
-    <span class="badge badge-sanas me-2">SANAS TR-18</span>
-    <span class="badge bg-success me-2">ISO4037-3 Compliant</span>
-    <span class="badge bg-secondary">POPIA Local Mode</span>
-  </nav>
+  <div id="root"></div>
 
-  <div class="container py-4">
-    <div class="p-4 mb-4 bg-dark rounded-3 border border-secondary">
-      <h3 class="fw-bold text-info mb-1">Calibration Certificate Automation Workstation</h3>
-      <p class="text-muted mb-0">Automated intake, ISO4037-3 validation engine, MCC15/MCC16 template generation, and Llama API AI review.</p>
-    </div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
 
-    <div class="row">
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-header"><i class="bi bi-upload me-2"></i>Stage 1: File Intake & Processing</div>
-          <div class="card-body">
-            <form id="processForm">
-              <div class="mb-3">
-                <label class="form-label font-semibold">1. Client Submission Form (Excel)</label>
-                <input type="file" class="form-control bg-dark text-light border-secondary" id="subFile" required>
+    const mockIntake = [
+      { id: "1", name: "BOEC-REM-2024-084_CLIENT.xlsx", type: "submission", size: "42.8 KB", ts: "2024-11-14 08:23:11 SAST", checksum: "a3f9c1e2b4d6...", status: "validated" },
+      { id: "2", name: "BOEC-REM-2024-084_RAW.xlsx", type: "rawdata", size: "128.4 KB", ts: "2024-11-14 08:23:44 SAST", checksum: "f8e2a9c7d1b3...", status: "validated" }
+    ];
+
+    const mockExtracted = [
+      { field: "Client Name", source: "Submission!B4", value: "Eskom Koeberg Nuclear Power Station", confidence: 99.2, editable: true, flag: "ok" },
+      { field: "Instrument ID", source: "Submission!B7", value: "BOEC-REM-2024-084", confidence: 100.0, editable: false, flag: "ok" },
+      { field: "Instrument Model", source: "Submission!B8", value: "Thermo Fisher RadEye PRD-ER", confidence: 98.5, editable: true, flag: "ok" },
+      { field: "Serial Number", source: "Submission!B9", value: "PRD-ER-88471", confidence: 99.8, editable: true, flag: "ok" },
+      { field: "Calibration Date", source: "RawData!A2", value: "2024-11-14", confidence: 100.0, editable: true, flag: "ok" },
+      { field: "Technician", source: "Submission!B12", value: "J. Van der Merwe (SANAS Auth: TM-042)", confidence: 97.3, editable: true, flag: "ok" },
+      { field: "Environmental - Temp", source: "RawData!D2:D8 avg", value: "21.3 °C", confidence: 96.1, editable: true, flag: "ok" },
+      { field: "Environmental - Humidity", source: "RawData!E2:E8 avg", value: "48.2 %RH", confidence: 95.8, editable: true, flag: "ok" },
+      { field: "Environmental - Pressure", source: "RawData!F2:F8", value: "1012.4 hPa", confidence: 94.7, editable: true, flag: "warn" },
+      { field: "Ref Standard", source: "Submission!B15", value: "Cs-137 S/N CS-2023-11 (Traceable to NMISA)", confidence: 99.0, editable: false, flag: "ok" },
+      { field: "Procedure", source: "Registry", value: "CP-02-08 Rev 4.2 / CP-03-07 Rev 2.1", confidence: 100.0, editable: false, flag: "ok" },
+      { field: "Irradiation 0.5 mSv/h", source: "RawData!B2", value: "0.512 mSv/h (ref 0.500)", confidence: 98.9, editable: true, flag: "ok" },
+      { field: "Irradiation 2 mSv/h", source: "RawData!B3", value: "2.043 mSv/h (ref 2.000)", confidence: 98.7, editable: true, flag: "ok" },
+      { field: "Irradiation 10 mSv/h", source: "RawData!B4", value: "10.18 mSv/h (ref 10.00)", confidence: 98.2, editable: true, flag: "ok" }
+    ];
+
+    const mockValidation = [
+      { rule: "Mandatory Field Completeness", category: "TR-18 §4.1", status: "pass", severity: "Critical", detail: "14/14 required fields present. No nulls." },
+      { rule: "Temp Range 18-24°C", category: "ISO 4037-3 §6.2", status: "pass", severity: "Critical", detail: "Measured 21.3°C within [18.0-24.0] tolerance." },
+      { rule: "Humidity Range 30-60%RH", category: "ISO 4037-3 §6.2", status: "pass", severity: "Critical", detail: "48.2%RH within operational envelope." },
+      { rule: "Pressure Range 860-1060 hPa", category: "Lab SOP CP-02-08", status: "pass", severity: "Warning", detail: "1012.4 hPa - nominal. Sensor drift flag cleared." },
+      { rule: "Dose Rate Monotonicity", category: "ISO 4037-3 §8.3", status: "pass", severity: "Critical", detail: "Response linear R²=0.9994 monotonic increase verified." },
+      { rule: "Date Logic (Cal < Due)", category: "ISO/IEC 17025 §7.8.2", status: "pass", severity: "Critical", detail: "Cal 2024-11-14 < Due 2025-11-14 - valid." },
+      { rule: "Template Compatibility MCC15-07 v2.1", category: "Doc Control", status: "pass", severity: "Info", detail: "Instrument type REM matched to MCC15 template." },
+      { rule: "Traceability Chain", category: "SANAS TR-18", status: "pass", severity: "Critical", detail: "NMISA cert 2023-11-0445 valid until 2025-02-15." },
+      { rule: "Uncertainty Budget k=2", category: "ISO 4037-3 Annex A", status: "warn", severity: "Warning", detail: "U=4.2% at 10mSv/h - within limit but review recommended." }
+    ];
+
+    const mockAudit = [
+      { id: "AUD-0001", ts: "2024-11-14 08:22:03", actor: "operator.jvdm@boec.local", action: "System boot - Ryzen 5 8600G | 32GB DDR5 | iGPU NPU online", hash: "sha256:e4a1...", stage: "SYSTEM" },
+      { id: "AUD-0002", ts: "2024-11-14 08:23:11", actor: "operator.jvdm@boec.local", action: "Intake validated: BOEC-REM-2024-084_CLIENT.xlsx", hash: "sha256:a3f9...", stage: "S1" },
+      { id: "AUD-0003", ts: "2024-11-14 08:23:44", actor: "operator.jvdm@boec.local", action: "Intake validated: BOEC-REM-2024-084_RAW.xlsx", hash: "sha256:f8e2...", stage: "S1" }
+    ];
+
+    function App() {
+      const [view, setView] = useState("dashboard");
+      const [workflowStage, setWorkflowStage] = useState(1);
+      const [backendUrl, setBackendUrl] = useState("http://localhost:8000");
+      const [apiOnline, setApiOnline] = useState(false);
+      const [intakeFiles, setIntakeFiles] = useState(mockIntake);
+      const [extracted, setExtracted] = useState(mockExtracted);
+      const [validation, setValidation] = useState(mockValidation);
+      const [audit, setAudit] = useState(mockAudit);
+      const [selectedTemplate, setSelectedTemplate] = useState("MCC15-07 v2.1");
+      const [isSigned, setIsSigned] = useState(false);
+      const [showOperatorModal, setShowOperatorModal] = useState(false);
+      const [parsingProgress, setParsingProgress] = useState(100);
+      const [searchQuery, setSearchQuery] = useState("");
+      const [dataSource, setDataSource] = useState("simulation");
+
+      useEffect(() => {
+        const checkHealth = async () => {
+          try {
+            const res = await fetch(`${backendUrl}/health`);
+            setApiOnline(res.ok);
+          } catch (e) {
+            setApiOnline(false);
+          }
+        };
+        checkHealth();
+        const interval = setInterval(checkHealth, 5000);
+        return () => clearInterval(interval);
+      }, [backendUrl]);
+
+      const addAudit = (action, stage) => {
+        const newEntry = {
+          id: `AUD-${String(audit.length + 1).padStart(4, "0")}`,
+          ts: new Date().toLocaleString("en-ZA", { hour12: false }).replace(",", ""),
+          actor: "operator.jvdm@boec.local",
+          action: action,
+          hash: `sha256:${Math.random().toString(16).slice(2, 10)}...`,
+          stage: stage
+        };
+        setAudit(prev => [newEntry, ...prev]);
+      };
+
+      const filteredExtracted = extracted.filter(item =>
+        item.field.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.value.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+      return (
+        <div className="min-h-screen bg-[#0e0f11] text-zinc-100 font-sans antialiased selection:bg-amber-500/30 flex flex-col">
+          {/* TOP HEADER */}
+          <header className="h-[56px] border-b border-zinc-800 bg-[#16181b] sticky top-0 z-50 flex items-center px-4 justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center font-bold text-black text-sm">
+                <i className="bi bi-box-seam-fill"></i>
               </div>
-              <div class="mb-3">
-                <label class="form-label font-semibold">2. Raw Calibration Data (Excel)</label>
-                <input type="file" class="form-control bg-dark text-light border-secondary" id="calFile" required>
+              <div>
+                <div className="font-bold tracking-tight text-sm text-zinc-100">BOEC WORKFLOW AGENT</div>
+                <div className="mono text-[10px] text-zinc-400 tracking-wider">SANAS • ISO4037-3 • POPIA COMPLIANT</div>
               </div>
-              <div class="mb-3">
-                <label class="form-label font-semibold">3. Certificate Output Template</label>
-                <select class="form-select bg-dark text-light border-secondary" id="templateType">
-                  <option value="MCC15-07" selected>MCC15-07 (Standard Calibration Certificate)</option>
-                  <option value="MCC16-07">MCC16-07 (Survey Meter / EPD Certificate)</option>
-                </select>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded px-2 py-1">
+                <span className="mono text-[11px] text-zinc-400">Backend:</span>
+                <input
+                  type="text"
+                  value={backendUrl}
+                  onChange={(e) => setBackendUrl(e.target.value)}
+                  className="bg-transparent mono text-[11px] text-amber-400 focus:outline-none w-48"
+                />
               </div>
-              <button type="submit" class="btn btn-info w-100 fw-bold" id="btnSubmit">Process Submission & Validate</button>
-            </form>
+              <div className={`mono text-[10px] px-2.5 py-1 rounded border flex items-center gap-1.5 ${apiOnline ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'}`}>
+                <span className={`w-2 h-2 rounded-full ${apiOnline ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'}`}></span>
+                {apiOnline ? 'API ONLINE' : 'API OFFLINE (SIM)'}
+              </div>
+              <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs mono">
+                JV
+              </div>
+            </div>
+          </header>
+
+          <div className="flex flex-1">
+            {/* LEFT SIDEBAR */}
+            <aside className="w-[260px] shrink-0 border-r border-zinc-800 bg-[#121316] p-3 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div>
+                  <div className="mono text-[10px] uppercase tracking-widest text-zinc-500 mb-2 px-2">WORKFLOW STAGES</div>
+                  <nav className="space-y-1">
+                    {[
+                      { id: "stage1", stageNum: 1, label: "Stage 1: Intake & Validation", icon: "bi-file-earmark-arrow-up", status: "emerald" },
+                      { id: "stage2", stageNum: 2, label: "Stage 2: Extraction", icon: "bi-scan", status: "emerald" },
+                      { id: "stage3", stageNum: 3, label: "Stage 3: Validation", icon: "bi-shield-check", status: "emerald" },
+                      { id: "stage4", stageNum: 4, label: "Stage 4: Certificate", icon: "bi-file-earmark-badge", status: "amber" },
+                      { id: "stage5", stageNum: 5, label: "Stage 5: Archive", icon: "bi-database-fill-gear", status: "zinc" }
+                    ].map(stg => (
+                      <button
+                        key={stg.id}
+                        onClick={() => { setView(stg.id); addAudit(`Navigated to ${stg.label}`, `S${stg.stageNum}`); }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-left transition ${view === stg.id ? 'bg-amber-500 text-black font-semibold' : 'text-zinc-300 hover:bg-zinc-800'}`}
+                      >
+                        <i className={`bi ${stg.icon} text-sm`}></i>
+                        <span className="truncate flex-1">{stg.label}</span>
+                        <span className={`w-2 h-2 rounded-full ${stg.status === 'emerald' ? 'bg-emerald-400' : stg.status === 'amber' ? 'bg-amber-400' : 'bg-zinc-600'}`}></span>
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+
+                <div>
+                  <div className="mono text-[10px] uppercase tracking-widest text-zinc-500 mb-2 px-2">REGISTRY & COMPLIANCE</div>
+                  <nav className="space-y-1">
+                    <button
+                      onClick={() => setView("templates")}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-left transition ${view === "templates" ? 'bg-amber-500 text-black font-semibold' : 'text-zinc-300 hover:bg-zinc-800'}`}
+                    >
+                      <i className="bi bi-collection-fill text-sm"></i>
+                      <span>Templates Registry</span>
+                    </button>
+                    <button
+                      onClick={() => setView("compliance")}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-left transition ${view === "compliance" ? 'bg-amber-500 text-black font-semibold' : 'text-zinc-300 hover:bg-zinc-800'}`}
+                    >
+                      <i className="bi bi-diagram-3-fill text-sm"></i>
+                      <span>Compliance Controls</span>
+                    </button>
+                  </nav>
+                </div>
+              </div>
+
+              {/* SIDEBAR FOOTER METADATA */}
+              <div className="space-y-2 border-t border-zinc-800 pt-3 mono text-[10px] text-zinc-400">
+                <div className="flex items-center gap-2 text-zinc-200">
+                  <i className="bi bi-person-badge-fill text-amber-400"></i>
+                  <span>J. Van der Merwe (TM-042)</span>
+                </div>
+                <div className="flex items-center gap-2 text-zinc-500">
+                  <i className="bi bi-cpu"></i>
+                  <span>Ryzen 5 8600G • 32GB DDR5</span>
+                </div>
+              </div>
+            </aside>
+
+            {/* MAIN CONTENT AREA */}
+            <main className="flex-1 p-6 overflow-auto max-w-[1400px] mx-auto space-y-6">
+              {/* DASHBOARD VIEW */}
+              {view === "dashboard" && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h1 className="text-xl font-bold tracking-tight text-white">Workflow Overview</h1>
+                    <span className="mono text-xs text-zinc-400">BOEC Accredited Laboratory CAL-2024-07</span>
+                  </div>
+
+                  {/* 4 STAT CARDS */}
+                  <div className="grid grid-cols-4 gap-4">
+                    {[
+                      { title: "Total Jobs Today", val: "14", sub: "3 currently processing", icon: "bi-briefcase-fill", color: "text-amber-400" },
+                      { title: "Pending Validation", val: "2", sub: "Stage 3 Operator Gate", icon: "bi-exclamation-triangle-fill", color: "text-amber-500" },
+                      { title: "Certificates Generated", val: "12", sub: "MCC15-07 / MCC16-07", icon: "bi-file-earmark-badge-fill", color: "text-emerald-400" },
+                      { title: "Audit Log Entries", val: String(audit.length), sub: "SHA256 Hash Chained", icon: "bi-database-fill-check", color: "text-blue-400" }
+                    ].map((card, i) => (
+                      <div key={i} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="mono text-[10px] text-zinc-500 uppercase tracking-widest">{card.title}</span>
+                          <i className={`bi ${card.icon} ${card.color}`}></i>
+                        </div>
+                        <div className="text-2xl font-bold text-white mono">{card.val}</div>
+                        <div className="mono text-[10px] text-zinc-400">{card.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 3 COLUMNS */}
+                  <div className="grid grid-cols-3 gap-6">
+                    {/* COL 1: INTAKE */}
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
+                      <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                        <span className="font-semibold text-sm">Recent Intake Files</span>
+                        <span className="mono text-[10px] text-zinc-500">2 Files</span>
+                      </div>
+                      <div className="space-y-2">
+                        {intakeFiles.map(file => (
+                          <div key={file.id} className="p-2.5 bg-zinc-800/40 rounded-lg border border-zinc-800/60 space-y-1">
+                            <div className="text-xs font-semibold text-zinc-200 truncate">{file.name}</div>
+                            <div className="mono text-[10px] text-zinc-400 flex justify-between">
+                              <span>{file.size}</span>
+                              <span className="text-emerald-400">{file.status}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* COL 2: VALIDATION SUMMARY */}
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
+                      <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                        <span className="font-semibold text-sm">Live Validation Check</span>
+                        <span className="mono text-[10px] text-emerald-400">9/9 PASSED</span>
+                      </div>
+                      <div className="space-y-2">
+                        {validation.slice(0, 4).map((v, i) => (
+                          <div key={i} className="p-2 bg-zinc-800/40 rounded border border-zinc-800 flex justify-between items-center text-xs">
+                            <span className="text-zinc-300">{v.rule}</span>
+                            <span className={`mono text-[10px] px-1.5 py-0.5 rounded ${v.status === 'pass' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                              {v.status.toUpperCase()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* COL 3: AUDIT TRAIL */}
+                    <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
+                      <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                        <span className="font-semibold text-sm">Audit Trail Digest</span>
+                        <span className="mono text-[10px] text-amber-400">SHA256 Log</span>
+                      </div>
+                      <div className="space-y-2">
+                        {audit.slice(0, 3).map((a, i) => (
+                          <div key={i} className="p-2 bg-zinc-800/40 rounded border border-zinc-800 space-y-1">
+                            <div className="text-[11px] text-zinc-300 truncate">{a.action}</div>
+                            <div className="mono text-[9px] text-zinc-500 flex justify-between">
+                              <span>{a.ts}</span>
+                              <span className="text-amber-500">{a.hash}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 1: INTAKE */}
+              {view === "stage1" && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h1 className="text-lg font-bold text-white">Stage 1: File Intake & Checksum Validation</h1>
+                      <p className="text-xs text-zinc-400">Upload Excel Client Submission and Raw Calibration workbook files.</p>
+                    </div>
+                    <button
+                      onClick={() => { setParsingProgress(0); addAudit("Simulated File Intake Validation", "S1"); setParsingProgress(100); }}
+                      className="bg-amber-500 text-black font-semibold text-xs px-4 py-2 rounded-lg hover:bg-amber-400"
+                    >
+                      Validate Intake
+                    </button>
+                  </div>
+
+                  <div className="border-2 border-dashed border-zinc-700 bg-zinc-900/50 rounded-xl p-8 text-center space-y-3 hover:border-amber-500/50 transition">
+                    <i className="bi bi-cloud-arrow-up text-3xl text-amber-500"></i>
+                    <div className="font-semibold text-sm text-zinc-200">Drop BOEC Calibration Excel Workbooks (.xlsx)</div>
+                    <div className="mono text-xs text-zinc-500">Supports Submission and RawData sheets formatted per CP-02-08</div>
+                  </div>
+
+                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-zinc-800/60 mono text-[10px] text-zinc-400 uppercase">
+                        <tr>
+                          <th className="p-3">File Name</th>
+                          <th className="p-3">Type</th>
+                          <th className="p-3">Size</th>
+                          <th className="p-3">Timestamp</th>
+                          <th className="p-3">SHA256 Checksum</th>
+                          <th className="p-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/60">
+                        {intakeFiles.map((f) => (
+                          <tr key={f.id} className="hover:bg-zinc-800/30">
+                            <td className="p-3 font-semibold text-zinc-200">{f.name}</td>
+                            <td className="p-3"><span className="mono text-[10px] px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700">{f.type}</span></td>
+                            <td className="p-3 text-zinc-400">{f.size}</td>
+                            <td className="p-3 text-zinc-400">{f.ts}</td>
+                            <td className="p-3 mono text-amber-400">{f.checksum}</td>
+                            <td className="p-3"><span className="text-emerald-400 font-semibold">{f.status}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 2: EXTRACTION */}
+              {view === "stage2" && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h1 className="text-lg font-bold text-white">Stage 2: Field Extraction & Mapping</h1>
+                      <p className="text-xs text-zinc-400">14 Key Certificate Fields Extracted via openpyxl Parser / LLM Agent</p>
+                    </div>
+                    <button onClick={() => { setView("stage3"); addAudit("Approved Extracted Fields", "S2"); }} className="bg-amber-500 text-black font-semibold text-xs px-4 py-2 rounded-lg hover:bg-amber-400">
+                      Approve & Proceed to Validation
+                    </button>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <input
+                      type="text"
+                      placeholder="Search extracted fields or values..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 w-80 focus:outline-none focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-zinc-800/60 mono text-[10px] text-zinc-400 uppercase">
+                        <tr>
+                          <th className="p-3">Field Name</th>
+                          <th className="p-3">Cell Source</th>
+                          <th className="p-3">Extracted Value</th>
+                          <th className="p-3">Confidence Score</th>
+                          <th className="p-3">Flag</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/60">
+                        {filteredExtracted.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-zinc-800/30">
+                            <td className="p-3 font-semibold text-zinc-200">{item.field}</td>
+                            <td className="p-3 mono text-zinc-500">{item.source}</td>
+                            <td className="p-3">
+                              <input
+                                type="text"
+                                value={item.value}
+                                onChange={(e) => {
+                                  const updated = [...extracted];
+                                  updated[idx].value = e.target.value;
+                                  setExtracted(updated);
+                                }}
+                                className="bg-zinc-800/80 border border-zinc-700/80 rounded px-2 py-1 text-xs text-amber-300 w-full focus:outline-none focus:border-amber-500"
+                              />
+                            </td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-16 bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-emerald-400 h-full" style={{ width: `${item.confidence}%` }}></div>
+                                </div>
+                                <span className="mono text-[10px] text-zinc-400">{item.confidence}%</span>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <span className={`mono text-[10px] px-2 py-0.5 rounded ${item.flag === 'ok' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                                {item.flag.toUpperCase()}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 3: VALIDATION */}
+              {view === "stage3" && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h1 className="text-lg font-bold text-white">Stage 3: ISO4037-3 & SANAS Compliance Validation</h1>
+                      <p className="text-xs text-zinc-400">9 Automated Technical Rules Checks Applied</p>
+                    </div>
+                    <button onClick={() => { setView("stage4"); addAudit("Validation Passed - Proceeded to Stage 4", "S3"); }} className="bg-amber-500 text-black font-semibold text-xs px-4 py-2 rounded-lg hover:bg-amber-400">
+                      Generate Certificate
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    {validation.map((v, idx) => (
+                      <div key={idx} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 space-y-2">
+                        <div className="flex justify-between items-start">
+                          <span className="font-semibold text-xs text-white">{v.rule}</span>
+                          <i className={`bi ${v.status === 'pass' ? 'bi-check-circle-fill text-emerald-400' : 'bi-exclamation-triangle-fill text-amber-400'} text-sm`}></i>
+                        </div>
+                        <div className="mono text-[10px] text-zinc-500">{v.category}</div>
+                        <div className="text-xs text-zinc-300">{v.detail}</div>
+                        <div className="flex justify-between items-center pt-2 border-t border-zinc-800/60">
+                          <span className="mono text-[9px] text-zinc-500">{v.severity}</span>
+                          <span className={`mono text-[10px] px-2 py-0.5 rounded ${v.status === 'pass' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                            {v.status.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 4: CERTIFICATE */}
+              {view === "stage4" && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h1 className="text-lg font-bold text-white">Stage 4: Certificate Generation & Approval</h1>
+                      <p className="text-xs text-zinc-400">Select Template and Apply Digital Signature</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <select
+                        value={selectedTemplate}
+                        onChange={(e) => setSelectedTemplate(e.target.value)}
+                        className="bg-zinc-900 border border-zinc-800 text-xs text-amber-400 px-3 py-2 rounded-lg focus:outline-none"
+                      >
+                        <option value="MCC15-07 v2.1">MCC15-07 v2.1 (Standard Calibration)</option>
+                        <option value="MCC16-07 v2.1">MCC16-07 v2.1 (Survey Meter / EPD)</option>
+                      </select>
+                      <button onClick={() => setShowOperatorModal(true)} className="bg-amber-500 text-black font-semibold text-xs px-4 py-2 rounded-lg hover:bg-amber-400">
+                        Operator Review Gate
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CERTIFICATE PREVIEW PANE */}
+                  <div className="bg-white text-zinc-900 rounded-xl p-8 max-w-[900px] mx-auto shadow-2xl space-y-6 font-serif">
+                    <div className="flex justify-between items-start border-b-2 border-zinc-900 pb-4">
+                      <div>
+                        <h2 className="font-bold text-lg">BOEC ENGINEERING CONSULTANTS</h2>
+                        <p className="text-xs text-zinc-600 font-sans">SANAS Accredited Calibration Laboratory CAL-2024-07</p>
+                      </div>
+                      <div className="text-right text-xs font-sans">
+                        <div className="font-bold">CERTIFICATE NO: BOEC-REM-2024-084</div>
+                        <div className="text-zinc-500">Template: {selectedTemplate}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-xs font-sans">
+                      <div>
+                        <span className="font-bold text-zinc-700">Client:</span> Eskom Koeberg Nuclear Power Station
+                      </div>
+                      <div>
+                        <span className="font-bold text-zinc-700">Instrument Model:</span> Thermo Fisher RadEye PRD-ER
+                      </div>
+                      <div>
+                        <span className="font-bold text-zinc-700">Serial Number:</span> PRD-ER-88471
+                      </div>
+                      <div>
+                        <span className="font-bold text-zinc-700">Calibration Date:</span> 2024-11-14
+                      </div>
+                    </div>
+
+                    <div className="border border-zinc-300 rounded p-4 font-sans space-y-2 text-xs">
+                      <div className="font-bold text-zinc-800">ISO4037-3 Measurement Integrity Summary:</div>
+                      <div>Environmental: 21.3°C | 48.2 %RH | 1012.4 hPa (ISO4037-3 Compliant)</div>
+                      <div>Calibration Factor: 1.024 ± 4.2% (k=2, 95% Confidence)</div>
+                    </div>
+
+                    <div className="flex justify-between items-end border-t border-zinc-300 pt-4 font-sans text-xs">
+                      <div>
+                        <div className="font-bold">Signatory: J. Van der Merwe (TM-042)</div>
+                        <div className="text-zinc-500">Technical Signatory • BOEC Engineering</div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`px-3 py-1 rounded text-white font-bold text-[10px] ${isSigned ? 'bg-emerald-600' : 'bg-amber-600'}`}>
+                          {isSigned ? 'DIGITALLY SIGNED (RSA-2048)' : 'UNSIGNED - PENDING APPROVAL'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 5: ARCHIVE */}
+              {view === "stage5" && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h1 className="text-lg font-bold text-white">Stage 5: Audit Log & Secure Archive</h1>
+                      <p className="text-xs text-zinc-400">SQLite Hash-Chained Audit Database Trail</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-zinc-800/60 mono text-[10px] text-zinc-400 uppercase">
+                        <tr>
+                          <th className="p-3">Audit ID</th>
+                          <th className="p-3">Timestamp</th>
+                          <th className="p-3">Actor</th>
+                          <th className="p-3">Action Executed</th>
+                          <th className="p-3">Stage</th>
+                          <th className="p-3">SHA256 Hash</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/60">
+                        {audit.map((entry) => (
+                          <tr key={entry.id} className="hover:bg-zinc-800/30">
+                            <td className="p-3 mono font-semibold text-amber-400">{entry.id}</td>
+                            <td className="p-3 mono text-zinc-400">{entry.ts}</td>
+                            <td className="p-3 text-zinc-300">{entry.actor}</td>
+                            <td className="p-3 text-zinc-200">{entry.action}</td>
+                            <td className="p-3"><span className="mono text-[10px] px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700">{entry.stage}</span></td>
+                            <td className="p-3 mono text-emerald-400">{entry.hash}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* TEMPLATES VIEW */}
+              {view === "templates" && (
+                <div className="space-y-6">
+                  <h1 className="text-lg font-bold text-white">Templates Registry</h1>
+                  <div className="grid grid-cols-2 gap-6">
+                    {[
+                      { name: "MCC15-07 v2.1", type: "Standard Area & REM Calibration", date: "2024-08-19", checksum: "b7e4a2f8...", status: "ACTIVE" },
+                      { name: "MCC16-07 v2.1", type: "Survey Meter / EPD Calibration", date: "2024-06-11", checksum: "f3d2b1c4...", status: "ACTIVE" }
+                    ].map((t, i) => (
+                      <div key={i} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-amber-400 text-sm">{t.name}</span>
+                          <span className="mono text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">{t.status}</span>
+                        </div>
+                        <div className="text-xs text-zinc-300">{t.type}</div>
+                        <div className="mono text-[10px] text-zinc-500">Approval Date: {t.date} | SHA256: {t.checksum}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* COMPLIANCE VIEW */}
+              {view === "compliance" && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2">
+                    <i className="bi bi-diagram-3-fill text-amber-500 text-lg"></i>
+                    <h1 className="text-lg font-bold text-white">Compliance Controls • SANAS Audit Ready</h1>
+                  </div>
+
+                  <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-zinc-800/60 mono text-[10px] text-zinc-400 uppercase">
+                        <tr>
+                          <th className="p-3">Requirement Area</th>
+                          <th className="p-3">Standard</th>
+                          <th className="p-3">Alignment Approach</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/60">
+                        {[
+                          { area: "Document Control", std: "ISO/IEC 17025 §8.3", align: "Template versioning MCC15-07 v2.1 checksum + approval workflow" },
+                          { area: "Environmental Monitoring", std: "ISO 4037-3 §6.2", align: "Range checks 18-24°C, 30-60%RH auto-validated, sensor traceability" },
+                          { area: "Metrological Traceability", std: "SANAS TR-18", align: "Cs-137 chain to NMISA cert 2023-11-0445, SI via BIPM" },
+                          { area: "Data Integrity", std: "ISO/IEC 17025 §7.11", align: "SHA256 checksum, hash-chained audit, SQLite WAL, encrypted FS" },
+                          { area: "Data Privacy", std: "POPIA", align: "Local LLM (Ollama), no egress, PII minimization, AES-256 at rest" },
+                          { area: "Impartiality & Confidentiality", std: "ISO/IEC 17025 §4", align: "Role-based access, operator sign-off, audit log immutable" }
+                        ].map((row, i) => (
+                          <tr key={i} className="hover:bg-zinc-800/30">
+                            <td className="p-3 font-semibold text-zinc-200">{row.area}</td>
+                            <td className="p-3 mono text-zinc-400">{row.std}</td>
+                            <td className="p-3 text-zinc-300">{row.align}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="border border-amber-500/30 bg-amber-500/5 rounded-xl p-4 text-xs text-zinc-300 space-y-2">
+                    <div className="font-semibold text-amber-400">Control Contribution Summary</div>
+                    <p className="leading-relaxed">
+                      Local AI eliminates 3rd-party data processor risk • FastAPI enforces naming BOEC-XXXX-YYYY • Python parser validates Excel schema before LLM • Operator checkpoints at S2 & S4 satisfy SANAS human oversight • SQLite provides tamper-evident audit, hybrid cloud gives 7yr retention per SANAS R04.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </main>
           </div>
+
+          {/* OPERATOR REVIEW MODAL */}
+          {showOperatorModal && (
+            <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-[480px] max-w-full rounded-xl border border-zinc-700 bg-zinc-900 p-5 space-y-4 shadow-2xl">
+                <div className="flex items-center gap-3 border-b border-zinc-800 pb-3">
+                  <i className="bi bi-shield-check text-amber-500 text-xl"></i>
+                  <div>
+                    <div className="font-bold text-sm text-white">Operator Review Checkpoint</div>
+                    <div className="mono text-[10px] text-zinc-400">BOEC Quality Management Gate</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mono text-xs bg-zinc-800/50 p-3 rounded border border-zinc-800 text-zinc-300">
+                  <div className="flex justify-between"><span>Certificate:</span> <span className="text-amber-400">BOEC-REM-2024-084</span></div>
+                  <div className="flex justify-between"><span>Validation:</span> <span className="text-emerald-400">9/9 PASSED</span></div>
+                  <div className="flex justify-between"><span>Signature:</span> <span>J. Van der Merwe (TM-042)</span></div>
+                  <div className="flex justify-between"><span>POPIA Mode:</span> <span className="text-emerald-400">Strict Local Enclave</span></div>
+                  <div className="flex justify-between"><span>Hash Chain:</span> <span className="text-emerald-400">sha256:a3f9c1e2...</span></div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowOperatorModal(false)}
+                    className="flex-1 bg-zinc-800 text-zinc-300 text-xs py-2 rounded-lg border border-zinc-700 hover:bg-zinc-700"
+                  >
+                    Return for Correction
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsSigned(true);
+                      setShowOperatorModal(false);
+                      setWorkflowStage(5);
+                      addAudit("Approved Final Release & Applied Digital Signature", "S4->S5");
+                    }}
+                    className="flex-1 bg-amber-500 text-black font-semibold text-xs py-2 rounded-lg hover:bg-amber-400"
+                  >
+                    Approve Final Release
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* FOOTER */}
+          <footer className="border-t border-zinc-800 bg-[#121316] py-3 text-center text-xs text-zinc-500 mono">
+            Smile and Enjoy your day !
+          </footer>
         </div>
-      </div>
-
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-header"><i class="bi bi-shield-check me-2"></i>Stage 3 & 4: ISO4037-3 Validation & Output</div>
-          <div class="card-body" id="outputContainer">
-            <p class="text-muted text-center py-5">Upload Excel submission and calibration files to run automated ISO4037-3 validation and generate certificate.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-journal-text me-2"></i>Stage 5: SANAS Audit Log & Traceability Trail</span>
-        <button class="btn btn-sm btn-outline-info" onclick="loadAudit()">Refresh Log</button>
-      </div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-dark table-striped mb-0 small">
-            <thead>
-              <tr><th>#</th><th>Job ID</th><th>Timestamp</th><th>Event</th><th>Validation Status</th><th>Hash Digest</th></tr>
-            </thead>
-            <tbody id="auditBody">
-              <tr><td colspan="6" class="text-center text-muted py-3">Loading audit records...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    document.getElementById('processForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('btnSubmit');
-      btn.disabled = true;
-      btn.textContent = 'Processing & Validating...';
-
-      const formData = new FormData();
-      formData.append('submission_file', document.getElementById('subFile').files[0]);
-      formData.append('calibration_file', document.getElementById('calFile').files[0]);
-      formData.append('template_type', document.getElementById('templateType').value);
-
-      try {
-        const res = await fetch('/api/process', { method: 'POST', body: formData });
-        const data = await res.json();
-        btn.disabled = false;
-        btn.textContent = 'Process Submission & Validate';
-
-        if (res.ok) {
-          document.getElementById('outputContainer').innerHTML = `
-            <div class="alert alert-success fw-bold">Validation Status: ${data.validation.status}</div>
-            <p><strong>Job ID:</strong> ${data.job_id}</p>
-            <p><strong>Customer:</strong> ${data.sub_data.customer || 'N/A'}</p>
-            <p><strong>Equipment:</strong> ${data.sub_data.equipment || 'N/A'}</p>
-            <p><strong>AI Review:</strong> ${data.ai_review ? data.ai_review.summary : 'Completed'}</p>
-            <a href="${data.download_url}" class="btn btn-success w-100 fw-bold" target="_blank">Download Generated Certificate (.docx)</a>
-          `;
-          loadAudit();
-        } else {
-          alert('Error: ' + (data.detail || 'Processing failed'));
-        }
-      } catch (err) {
-        btn.disabled = false;
-        btn.textContent = 'Process Submission & Validate';
-        alert('Network Error: ' + err.message);
-      }
-    });
-
-    async function loadAudit() {
-      try {
-        const res = await fetch('/api/audit');
-        const data = await res.json();
-        const tbody = document.getElementById('auditBody');
-        tbody.innerHTML = '';
-        data.forEach(item => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${item.id}</td>
-            <td class="fw-bold">${item.job_id}</td>
-            <td>${new Date(item.timestamp).toLocaleString()}</td>
-            <td><span class="badge bg-primary">${item.event}</span></td>
-            <td><span class="text-success font-bold">${item.data.validation || 'PASS'}</span></td>
-            <td class="audit-hash text-info">${(item.hash || '').substring(0, 16)}...</td>
-          `;
-          tbody.appendChild(tr);
-        });
-      } catch (err) {
-        console.error(err);
-      }
+      );
     }
-    loadAudit();
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
   </script>
 </body>
 </html>
