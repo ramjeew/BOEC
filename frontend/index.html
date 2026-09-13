@@ -403,18 +403,60 @@
                   {/* 4 STAT CARDS */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                      { title: "Total Jobs Today", val: String(intakeFiles.length), sub: "Intake workbooks", icon: "bi-briefcase-fill", color: "text-amber-400" },
-                      { title: "Pending Validation", val: String(activeValidation.filter(v => v.status !== 'pass').length), sub: "Stage 3 Gate", icon: "bi-exclamation-triangle-fill", color: "text-amber-500" },
-                      { title: "Certificates Generated", val: String(liveCerts.length || (generatedCert ? 1 : 12)), sub: "MCC15-07 / MCC16-07", icon: "bi-file-earmark-badge-fill", color: "text-emerald-400" },
-                      { title: "Audit Log Entries", val: String(activeAudit.length), sub: "SHA256 Hash Chained", icon: "bi-database-fill-check", color: "text-blue-400" }
+                      {
+                        title: "Total Jobs Today",
+                        val: String(intakeFiles.length),
+                        sub: "Click to inspect intake files",
+                        icon: "bi-briefcase-fill",
+                        color: "text-amber-400",
+                        targetStage: "stage1",
+                        modalData: { title: "Total Jobs Ingested Today", items: intakeFiles }
+                      },
+                      {
+                        title: "Pending Validation",
+                        val: String(activeValidation.filter(v => v.status !== 'pass').length),
+                        sub: "Click to view Stage 3 checks",
+                        icon: "bi-exclamation-triangle-fill",
+                        color: "text-amber-500",
+                        targetStage: "stage3",
+                        modalData: { title: "Validation Checks Summary", items: activeValidation }
+                      },
+                      {
+                        title: "Certificates Generated",
+                        val: String(liveCerts.length || (generatedCert ? 1 : 12)),
+                        sub: "Click to view MCC15/MCC16 certs",
+                        icon: "bi-file-earmark-badge-fill",
+                        color: "text-emerald-400",
+                        targetStage: "stage4",
+                        modalData: { title: "Generated Certificates Register", items: liveCerts.length > 0 ? liveCerts : [
+                          { cert_no: "BOEC-CAL-2024-084", client: "Eskom Koeberg", model: "Thermo RadEye PRD-ER", date: "2024-11-14", status: "Signed & Released" },
+                          { cert_no: "BOEC-CAL-2024-083", client: "Necsa Pelindaba", model: "Automess 6150AD", date: "2024-11-13", status: "Signed & Released" }
+                        ]}
+                      },
+                      {
+                        title: "Audit Log Entries",
+                        val: String(activeAudit.length),
+                        sub: "Click to view SQLite SHA256 trail",
+                        icon: "bi-database-fill-check",
+                        color: "text-blue-400",
+                        targetStage: "stage5",
+                        modalData: { title: "Audit Trail Records", items: activeAudit }
+                      }
                     ].map((card, i) => (
-                      <div key={i} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 space-y-2">
+                      <div
+                        key={i}
+                        onClick={() => setShowDataModal({ type: "stat", title: card.modalData.title, stage: card.targetStage, data: card.modalData.items })}
+                        className="bg-zinc-900/80 hover:bg-zinc-800/90 border border-zinc-800 hover:border-amber-500/50 cursor-pointer rounded-xl p-4 space-y-2 transition group"
+                      >
                         <div className="flex justify-between items-center">
-                          <span className="mono text-[10px] text-zinc-500 uppercase tracking-widest">{card.title}</span>
-                          <i className={`bi ${card.icon} ${card.color}`}></i>
+                          <span className="mono text-[10px] text-zinc-400 group-hover:text-amber-400 uppercase tracking-widest font-semibold">{card.title}</span>
+                          <i className={`bi ${card.icon} ${card.color} text-lg`}></i>
                         </div>
-                        <div className="text-2xl font-bold text-white mono">{card.val}</div>
-                        <div className="mono text-[10px] text-zinc-400">{card.sub}</div>
+                        <div className="text-2xl font-bold text-white mono flex items-center justify-between">
+                          <span>{card.val}</span>
+                          <i className="bi bi-arrow-right-short text-zinc-500 group-hover:text-amber-400 text-xl transition"></i>
+                        </div>
+                        <div className="mono text-[10px] text-zinc-500 group-hover:text-zinc-300">{card.sub}</div>
                       </div>
                     ))}
                   </div>
@@ -877,17 +919,36 @@
           {/* DATA INSPECTION MODAL */}
           {showDataModal && (
             <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="w-[520px] max-w-full rounded-xl border border-zinc-700 bg-zinc-900 p-5 space-y-4 shadow-2xl">
+              <div className="w-[580px] max-w-full rounded-xl border border-zinc-700 bg-zinc-900 p-5 space-y-4 shadow-2xl">
                 <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
-                  <div className="font-bold text-sm text-amber-400">{showDataModal.title}</div>
+                  <div className="font-bold text-sm text-amber-400 flex items-center gap-2">
+                    <i className="bi bi-search text-amber-500"></i>
+                    <span>{showDataModal.title}</span>
+                  </div>
                   <button onClick={() => setShowDataModal(null)} className="text-zinc-400 hover:text-white"><i className="bi bi-x-lg"></i></button>
                 </div>
                 <pre className="mono text-xs text-zinc-300 bg-zinc-800/60 p-3 rounded border border-zinc-800 max-h-80 overflow-auto whitespace-pre-wrap break-all">
                   {JSON.stringify(showDataModal.data, null, 2)}
                 </pre>
-                <button onClick={() => setShowDataModal(null)} className="w-full bg-zinc-800 text-zinc-300 text-xs py-2 rounded-lg border border-zinc-700 hover:bg-zinc-700">
-                  Close Inspector
-                </button>
+                <div className="flex gap-3">
+                  {showDataModal.stage && (
+                    <button
+                      onClick={() => {
+                        const stg = showDataModal.stage;
+                        setShowDataModal(null);
+                        setView(stg);
+                        addAudit(`Navigated to ${stg} from Stat Card modal`, "NAV");
+                      }}
+                      className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs py-2 rounded-lg transition flex items-center justify-center gap-1.5"
+                    >
+                      <span>Open in {showDataModal.stage.toUpperCase()} Stage</span>
+                      <i className="bi bi-arrow-right"></i>
+                    </button>
+                  )}
+                  <button onClick={() => setShowDataModal(null)} className="px-4 bg-zinc-800 text-zinc-300 text-xs py-2 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition">
+                    Close Inspector
+                  </button>
+                </div>
               </div>
             </div>
           )}
