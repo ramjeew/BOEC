@@ -27,6 +27,8 @@ def test_parser_and_validation():
 
     assert sub_data is not None
     assert cal_data is not None
+    assert "schema_validation" in sub_data
+    assert "schema_validation" in cal_data
 
     merged = {**sub_data, **cal_data}
     val = validate_calibration_data(merged)
