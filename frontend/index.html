@@ -81,6 +81,7 @@
       const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem("boec_backend_url") || (window.location.origin.includes("http") ? window.location.origin : "http://localhost:8000"));
       const [apiOnline, setApiOnline] = useState(false);
       const [dataSource, setDataSource] = useState("simulation");
+      const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
       const [jobId, setJobId] = useState("JOB-2024-084");
       const [intakeFiles, setIntakeFiles] = useState(mockIntake);
       const [extracted, setExtracted] = useState(mockExtracted);
@@ -252,12 +253,15 @@
         <div className="min-h-screen bg-[#0e0f11] text-zinc-100 font-sans antialiased selection:bg-amber-500/30 flex flex-col">
           {/* TOP HEADER */}
           <header className="h-[56px] border-b border-zinc-800 bg-[#16181b] sticky top-0 z-50 flex items-center px-4 justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center font-bold text-black text-sm">
+            <div className="flex items-center gap-2 md:gap-3">
+              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-zinc-300 hover:text-white p-1 text-lg">
+                <i className={`bi ${mobileMenuOpen ? 'bi-x-lg' : 'bi-list'}`}></i>
+              </button>
+              <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center font-bold text-black text-sm shrink-0">
                 <i className="bi bi-box-seam-fill"></i>
               </div>
               <div>
-                <div className="font-bold tracking-tight text-sm text-zinc-100">BOEC WORKFLOW AGENT</div>
+                <button onClick={() => { setView("dashboard"); addAudit("Returned to Dashboard", "NAV"); }} className="font-bold tracking-tight text-sm text-zinc-100 hover:text-amber-400 flex items-center gap-1 transition"><i className="bi bi-speedometer2 text-amber-400 me-1"></i>BOEC WORKFLOW AGENT</button>
                 <div className="mono text-[10px] text-zinc-400 tracking-wider">SANAS • ISO4037-3 • POPIA COMPLIANT</div>
               </div>
             </div>
@@ -289,9 +293,44 @@
             </div>
           )}
 
-          <div className="flex flex-1">
+          <div className="flex flex-1 relative">
+          {/* MOBILE DRAWER OVERLAY */}
+          {mobileMenuOpen && (
+            <div className="md:hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}>
+              <div className="w-[280px] h-full bg-[#121316] border-r border-zinc-800 p-4 space-y-4 overflow-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+                  <span className="mono text-xs font-bold text-amber-400">NAVIGATION MENU</span>
+                  <button onClick={() => setMobileMenuOpen(false)} className="text-zinc-400"><i className="bi bi-x-lg"></i></button>
+                </div>
+                <div>
+                  <div className="mono text-[10px] uppercase tracking-widest text-zinc-500 mb-2">WORKFLOW STAGES</div>
+                  <nav className="space-y-1">
+                    {[
+                      { id: "dashboard", stageNum: 0, label: "Workflow Overview", icon: "bi-speedometer2" },
+                      { id: "stage1", stageNum: 1, label: "Stage 1: Intake & Validation", icon: "bi-file-earmark-arrow-up" },
+                      { id: "stage2", stageNum: 2, label: "Stage 2: Extraction", icon: "bi-scan" },
+                      { id: "stage3", stageNum: 3, label: "Stage 3: Validation", icon: "bi-shield-check" },
+                      { id: "stage4", stageNum: 4, label: "Stage 4: Certificate", icon: "bi-file-earmark-badge" },
+                      { id: "stage5", stageNum: 5, label: "Stage 5: Archive", icon: "bi-database-fill-gear" },
+                      { id: "templates", stageNum: 6, label: "Templates Registry", icon: "bi-collection-fill" },
+                      { id: "compliance", stageNum: 7, label: "Compliance Controls", icon: "bi-diagram-3-fill" }
+                    ].map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => { setView(item.id); setMobileMenuOpen(false); addAudit(`Mobile Nav to ${item.label}`, "NAV"); }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium text-left transition ${view === item.id ? 'bg-amber-500 text-black font-semibold' : 'text-zinc-300 hover:bg-zinc-800'}`}
+                      >
+                        <i className={`bi ${item.icon} text-sm`}></i>
+                        <span className="truncate flex-1">{item.label}</span>
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
             {/* LEFT SIDEBAR */}
-            <aside className="w-[260px] shrink-0 border-r border-zinc-800 bg-[#121316] p-3 flex flex-col justify-between">
+            <aside className="hidden md:flex w-[260px] shrink-0 border-r border-zinc-800 bg-[#121316] p-3 flex-col justify-between">
               <div className="space-y-4">
                 <div>
                   <div className="mono text-[10px] uppercase tracking-widest text-zinc-500 mb-2 px-2">WORKFLOW STAGES</div>
@@ -360,7 +399,7 @@
                   </div>
 
                   {/* 4 STAT CARDS */}
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
                       { title: "Total Jobs Today", val: String(intakeFiles.length), sub: "Intake workbooks", icon: "bi-briefcase-fill", color: "text-amber-400" },
                       { title: "Pending Validation", val: String(activeValidation.filter(v => v.status !== 'pass').length), sub: "Stage 3 Gate", icon: "bi-exclamation-triangle-fill", color: "text-amber-500" },
@@ -379,7 +418,7 @@
                   </div>
 
                   {/* CLICKABLE 3 COLUMNS */}
-                  <div className="grid grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
                     {/* COL 1: INTAKE FILES */}
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
                       <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
@@ -467,7 +506,7 @@
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h1 className="text-lg font-bold text-white">Stage 1: File Intake & Checksum Validation</h1>
+                      <div className="flex items-center gap-3"><button onClick={() => { setView("dashboard"); addAudit("Returned to Dashboard", "NAV"); }} className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-semibold text-xs px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition"><i className="bi bi-arrow-left"></i> Back to Dashboard</button><h1 className="text-lg font-bold text-white">Stage 1: File Intake & Checksum Validation</h1></div>
                       <p className="text-xs text-zinc-400">Upload BOEC-REM-YYYY-XXX_CLIENT.xlsx and RAW.xlsx workbooks.</p>
                     </div>
                     <button
@@ -536,7 +575,7 @@
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h1 className="text-lg font-bold text-white">Stage 2: Field Extraction & Mapping</h1>
+                      <div className="flex items-center gap-3"><button onClick={() => { setView("dashboard"); addAudit("Returned to Dashboard", "NAV"); }} className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-semibold text-xs px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition"><i className="bi bi-arrow-left"></i> Back to Dashboard</button><h1 className="text-lg font-bold text-white">Stage 2: Field Extraction & Mapping</h1></div>
                       <p className="text-xs text-zinc-400">14 Key Certificate Fields Extracted via openpyxl Parser / LLM Agent</p>
                     </div>
                     <button onClick={() => { setView("stage3"); addAudit("Approved Extracted Fields", "S2"); }} className="bg-amber-500 text-black font-semibold text-xs px-4 py-2 rounded-lg hover:bg-amber-400">
@@ -608,7 +647,7 @@
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h1 className="text-lg font-bold text-white">Stage 3: ISO4037-3 & SANAS Compliance Validation</h1>
+                      <div className="flex items-center gap-3"><button onClick={() => { setView("dashboard"); addAudit("Returned to Dashboard", "NAV"); }} className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-semibold text-xs px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition"><i className="bi bi-arrow-left"></i> Back to Dashboard</button><h1 className="text-lg font-bold text-white">Stage 3: ISO4037-3 & SANAS Compliance Validation</h1></div>
                       <p className="text-xs text-zinc-400">9 Automated Technical Rules Checks Applied</p>
                     </div>
                     <button onClick={() => { setView("stage4"); handleGenerateCert(); addAudit("Validation Passed - Proceeded to Stage 4", "S3"); }} className="bg-amber-500 text-black font-semibold text-xs px-4 py-2 rounded-lg hover:bg-amber-400">
@@ -616,7 +655,7 @@
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {activeValidation.map((v, idx) => (
                       <div key={idx} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 space-y-2">
                         <div className="flex justify-between items-start">
@@ -642,7 +681,7 @@
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h1 className="text-lg font-bold text-white">Stage 4: Certificate Generation & Approval</h1>
+                      <div className="flex items-center gap-3"><button onClick={() => { setView("dashboard"); addAudit("Returned to Dashboard", "NAV"); }} className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-semibold text-xs px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition"><i className="bi bi-arrow-left"></i> Back to Dashboard</button><h1 className="text-lg font-bold text-white">Stage 4: Certificate Generation & Approval</h1></div>
                       <p className="text-xs text-zinc-400">Select Template and Apply Digital Signature</p>
                     </div>
                     <div className="flex gap-2">
@@ -721,7 +760,7 @@
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h1 className="text-lg font-bold text-white">Stage 5: Audit Log & Secure Archive</h1>
+                      <div className="flex items-center gap-3"><button onClick={() => { setView("dashboard"); addAudit("Returned to Dashboard", "NAV"); }} className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-semibold text-xs px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition"><i className="bi bi-arrow-left"></i> Back to Dashboard</button><h1 className="text-lg font-bold text-white">Stage 5: Audit Log & Secure Archive</h1></div>
                       <p className="text-xs text-zinc-400">SQLite Hash-Chained Audit Database Trail</p>
                     </div>
                     <button
@@ -764,8 +803,8 @@
               {/* TEMPLATES VIEW */}
               {view === "templates" && (
                 <div className="space-y-6">
-                  <h1 className="text-lg font-bold text-white">Templates Registry</h1>
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="flex items-center gap-3"><button onClick={() => { setView("dashboard"); addAudit("Returned to Dashboard", "NAV"); }} className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-semibold text-xs px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition"><i className="bi bi-arrow-left"></i> Back to Dashboard</button><h1 className="text-lg font-bold text-white">Templates Registry</h1></div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     {[
                       { name: "MCC15-07 v2.1", type: "Standard Area & REM Calibration", date: "2024-08-19", checksum: "b7e4a2f8...", status: "ACTIVE" },
                       { name: "MCC16-07 v2.1", type: "Survey Meter / EPD Calibration", date: "2024-06-11", checksum: "f3d2b1c4...", status: "ACTIVE" }
@@ -788,7 +827,7 @@
                 <div className="space-y-6">
                   <div className="flex items-center gap-2">
                     <i className="bi bi-diagram-3-fill text-amber-500 text-lg"></i>
-                    <h1 className="text-lg font-bold text-white">Compliance Controls • SANAS Audit Ready</h1>
+                    <div className="flex items-center gap-3"><button onClick={() => { setView("dashboard"); addAudit("Returned to Dashboard", "NAV"); }} className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-semibold text-xs px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition"><i className="bi bi-arrow-left"></i> Back to Dashboard</button><h1 className="text-lg font-bold text-white">Compliance Controls • SANAS Audit Ready</h1></div>
                   </div>
 
                   <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
