@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,10 +6,12 @@ import os
 import shutil
 import uuid
 import tempfile
+from typing import Dict, Any
 from backend.parser import parse_excel
 from backend.validation import validate_calibration_data
 from backend.certificate import generate_certificate
 from backend.audit import log_event, get_audit_trail
+from backend.ai_agent import load_config, save_config, test_ai_connection, ai_extract_metadata
 
 app = FastAPI(
     title="BOEC AI Workflow Agent",
@@ -31,13 +33,31 @@ os.makedirs(CERTS_DIR, exist_ok=True)
 
 @app.get("/health")
 async def health():
+    cfg = load_config()
     return {
         "status": "online",
         "mode": "POPIA-safe local",
+        "ai_provider": cfg.get("provider", "ollama"),
+        "ollama_model": cfg.get("ollama_model", "llama3:8b"),
         "sanas_accreditation": "CAL-2024-07",
         "standards": ["SANAS TR-18", "ISO4037-3:2019", "ISO/IEC 17025:2017"],
         "target_hardware": "BOEC Ryzen 5 8600G (32GB DDR5)"
     }
+
+@app.get("/api/config")
+async def get_configuration():
+    return load_config()
+
+@app.post("/api/config")
+async def update_configuration(config: Dict[str, Any] = Body(...)):
+    updated = save_config(config)
+    await log_event("SYS_CONFIG", "CONFIG_UPDATE", {"provider": updated.get("provider"), "model": updated.get("ollama_model")})
+    return {"status": "SUCCESS", "config": updated}
+
+@app.post("/api/config/test-ai")
+async def test_ai_settings(config: Dict[str, Any] = Body(None)):
+    res = test_ai_connection(config)
+    return res
 
 @app.post("/api/process")
 async def process_submission(
@@ -62,6 +82,12 @@ async def process_submission(
 
         # Merge extracted metadata
         merged_data = {**sub_data, **cal_data}
+
+        # Optional AI Extraction enhancement
+        ai_extracted = ai_extract_metadata(str(merged_data.get("raw_sheets", {})))
+        for k, v in ai_extracted.items():
+            if v and not merged_data.get(k):
+                merged_data[k] = v
 
         # Stage 3: ISO4037-3 & SANAS Validation
         validation = validate_calibration_data(merged_data)
@@ -139,4 +165,5 @@ if os.path.exists("frontend"):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
