@@ -78,36 +78,73 @@
     function App() {
       const [view, setView] = useState("dashboard");
       const [workflowStage, setWorkflowStage] = useState(1);
-      const [backendUrl, setBackendUrl] = useState("http://localhost:8000");
+      const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem("boec_backend_url") || "http://localhost:8000");
       const [apiOnline, setApiOnline] = useState(false);
+      const [dataSource, setDataSource] = useState("simulation");
+      const [jobId, setJobId] = useState("JOB-2024-084");
       const [intakeFiles, setIntakeFiles] = useState(mockIntake);
       const [extracted, setExtracted] = useState(mockExtracted);
-      const [validation, setValidation] = useState(mockValidation);
+      const [liveValidation, setLiveValidation] = useState(null);
       const [audit, setAudit] = useState(mockAudit);
+      const [liveAudit, setLiveAudit] = useState(null);
+      const [liveCerts, setLiveCerts] = useState([]);
       const [selectedTemplate, setSelectedTemplate] = useState("MCC15-07 v2.1");
       const [isSigned, setIsSigned] = useState(false);
       const [showOperatorModal, setShowOperatorModal] = useState(false);
       const [parsingProgress, setParsingProgress] = useState(100);
       const [searchQuery, setSearchQuery] = useState("");
-      const [dataSource, setDataSource] = useState("simulation");
+      const [generatedCert, setGeneratedCert] = useState(null);
+      const [stagedSubmission, setStagedSubmission] = useState(null);
+      const [stagedRaw, setStagedRaw] = useState(null);
+      const subInputRef = useRef(null);
+      const rawInputRef = useRef(null);
 
       useEffect(() => {
-        const checkHealth = async () => {
-          try {
-            const res = await fetch(`${backendUrl}/health`);
-            setApiOnline(res.ok);
-          } catch (e) {
+        localStorage.setItem("boec_backend_url", backendUrl);
+      }, [backendUrl]);
+
+      const apiFetch = async (endpoint, options = {}) => {
+        try {
+          const res = await fetch(`${backendUrl}${endpoint}`, options);
+          if (res.ok) {
+            setApiOnline(true);
+            setDataSource("live");
+            return await res.json();
+          } else {
             setApiOnline(false);
+            setDataSource("simulation");
+            return null;
+          }
+        } catch (err) {
+          setApiOnline(false);
+          setDataSource("simulation");
+          return null;
+        }
+      };
+
+      // Poll health, audit, certs
+      useEffect(() => {
+        const poll = async () => {
+          const health = await apiFetch("/health");
+          if (health) {
+            const auditData = await apiFetch("/api/audit?limit=100");
+            if (Array.isArray(auditData) && auditData.length > 0) {
+              setLiveAudit(auditData);
+            }
+            const certsData = await apiFetch("/api/certs");
+            if (certsData && certsData.certificates) {
+              setLiveCerts(certsData.certificates);
+            }
           }
         };
-        checkHealth();
-        const interval = setInterval(checkHealth, 5000);
+        poll();
+        const interval = setInterval(poll, 5000);
         return () => clearInterval(interval);
       }, [backendUrl]);
 
-      const addAudit = (action, stage) => {
+      const addAudit = async (action, stage) => {
         const newEntry = {
-          id: `AUD-${String(audit.length + 1).padStart(4, "0")}`,
+          id: `AUD-${String((liveAudit || audit).length + 1).padStart(4, "0")}`,
           ts: new Date().toLocaleString("en-ZA", { hour12: false }).replace(",", ""),
           actor: "operator.jvdm@boec.local",
           action: action,
@@ -117,10 +154,101 @@
         setAudit(prev => [newEntry, ...prev]);
       };
 
+      // Upload Handler
+      const handleFileUpload = async (subFile, rawFile) => {
+        setParsingProgress(20);
+        if (apiOnline) {
+          const formData = new FormData();
+          formData.append("submission_file", subFile);
+          formData.append("rawdata_file", rawFile);
+
+          const res = await apiFetch("/api/upload", { method: "POST", body: formData });
+          if (res && res.files) {
+            setIntakeFiles(res.files);
+            setJobId(res.job_id);
+            setParsingProgress(100);
+
+            // Extract
+            const extractRes = await apiFetch("/api/extract", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ job_id: res.job_id, files: res.files })
+            });
+            if (extractRes && extractRes.extracted) {
+              setExtracted(extractRes.extracted);
+            }
+
+            // Validate
+            const valRes = await apiFetch("/api/validate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ job_id: res.job_id, extracted: extractRes?.extracted || extracted })
+            });
+            if (valRes && valRes.validation) {
+              setLiveValidation(valRes.validation);
+            }
+
+            setWorkflowStage(2);
+            setView("stage2");
+            return;
+          }
+        }
+
+        // Offline Simulation Fallback
+        setParsingProgress(100);
+        const simFiles = [
+          { id: "1", name: subFile.name, type: "submission", size: `${(subFile.size/1024).toFixed(1)} KB`, ts: new Date().toLocaleString("en-ZA"), checksum: "sha256:a3f9...", status: "validated" },
+          { id: "2", name: rawFile.name, type: "rawdata", size: `${(rawFile.size/1024).toFixed(1)} KB`, ts: new Date().toLocaleString("en-ZA"), checksum: "sha256:f8e2...", status: "validated" }
+        ];
+        setIntakeFiles(simFiles);
+        addAudit(`Intake validated (Simulation): ${subFile.name} + ${rawFile.name}`, "S1");
+        setWorkflowStage(2);
+        setView("stage2");
+      };
+
+      // Generate Cert Handler
+      const handleGenerateCert = async () => {
+        if (apiOnline) {
+          const res = await apiFetch("/api/generate-cert", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: jobId, template: selectedTemplate.includes("MCC15") ? "MCC15" : "MCC16", extracted, validation: liveValidation || mockValidation })
+          });
+          if (res && res.cert_no) {
+            setGeneratedCert(res);
+            return;
+          }
+        }
+        // Fallback
+        setGeneratedCert({
+          cert_no: "BOEC-CAL-2024-084",
+          hash: "sha256:9c2e4f8b1a3d...",
+          created_at: new Date().toLocaleString("en-ZA"),
+          status: "draft"
+        });
+      };
+
+      // Sign Handler
+      const handleSign = async () => {
+        setIsSigned(true);
+        if (apiOnline) {
+          await apiFetch("/api/sign", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: jobId, cert_no: generatedCert?.cert_no || "BOEC-CAL-2024-084", operator: "J. Van der Merwe TM-042" })
+          });
+        }
+        addAudit("Approved Final Release & Applied Digital Signature (RSA2048)", "S4->S5");
+        setWorkflowStage(5);
+      };
+
       const filteredExtracted = extracted.filter(item =>
         item.field.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.value.toLowerCase().includes(searchQuery.toLowerCase())
       );
+
+      const activeValidation = liveValidation || mockValidation;
+      const activeAudit = liveAudit || audit;
 
       return (
         <div className="min-h-screen bg-[#0e0f11] text-zinc-100 font-sans antialiased selection:bg-amber-500/30 flex flex-col">
@@ -156,6 +284,13 @@
             </div>
           </header>
 
+          {!apiOnline && (
+            <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 mono text-[11px] text-amber-300 flex justify-between items-center">
+              <span>⚠️ OFFLINE MODE - Local simulation - Connect backend at {backendUrl} for live pipeline</span>
+              <span className="text-zinc-500">POPIA Air-Gapped Mode Active</span>
+            </div>
+          )}
+
           <div className="flex flex-1">
             {/* LEFT SIDEBAR */}
             <aside className="w-[260px] shrink-0 border-r border-zinc-800 bg-[#121316] p-3 flex flex-col justify-between">
@@ -164,11 +299,11 @@
                   <div className="mono text-[10px] uppercase tracking-widest text-zinc-500 mb-2 px-2">WORKFLOW STAGES</div>
                   <nav className="space-y-1">
                     {[
-                      { id: "stage1", stageNum: 1, label: "Stage 1: Intake & Validation", icon: "bi-file-earmark-arrow-up", status: "emerald" },
-                      { id: "stage2", stageNum: 2, label: "Stage 2: Extraction", icon: "bi-scan", status: "emerald" },
-                      { id: "stage3", stageNum: 3, label: "Stage 3: Validation", icon: "bi-shield-check", status: "emerald" },
-                      { id: "stage4", stageNum: 4, label: "Stage 4: Certificate", icon: "bi-file-earmark-badge", status: "amber" },
-                      { id: "stage5", stageNum: 5, label: "Stage 5: Archive", icon: "bi-database-fill-gear", status: "zinc" }
+                      { id: "stage1", stageNum: 1, label: "Stage 1: Intake & Validation", icon: "bi-file-earmark-arrow-up", status: workflowStage >= 1 ? "emerald" : "zinc" },
+                      { id: "stage2", stageNum: 2, label: "Stage 2: Extraction", icon: "bi-scan", status: workflowStage >= 2 ? "emerald" : "zinc" },
+                      { id: "stage3", stageNum: 3, label: "Stage 3: Validation", icon: "bi-shield-check", status: workflowStage >= 3 ? "emerald" : "zinc" },
+                      { id: "stage4", stageNum: 4, label: "Stage 4: Certificate", icon: "bi-file-earmark-badge", status: workflowStage >= 4 ? "amber" : "zinc" },
+                      { id: "stage5", stageNum: 5, label: "Stage 5: Archive", icon: "bi-database-fill-gear", status: workflowStage >= 5 ? "emerald" : "zinc" }
                     ].map(stg => (
                       <button
                         key={stg.id}
@@ -204,7 +339,6 @@
                 </div>
               </div>
 
-              {/* SIDEBAR FOOTER METADATA */}
               <div className="space-y-2 border-t border-zinc-800 pt-3 mono text-[10px] text-zinc-400">
                 <div className="flex items-center gap-2 text-zinc-200">
                   <i className="bi bi-person-badge-fill text-amber-400"></i>
@@ -227,13 +361,12 @@
                     <span className="mono text-xs text-zinc-400">BOEC Accredited Laboratory CAL-2024-07</span>
                   </div>
 
-                  {/* 4 STAT CARDS */}
                   <div className="grid grid-cols-4 gap-4">
                     {[
-                      { title: "Total Jobs Today", val: "14", sub: "3 currently processing", icon: "bi-briefcase-fill", color: "text-amber-400" },
-                      { title: "Pending Validation", val: "2", sub: "Stage 3 Operator Gate", icon: "bi-exclamation-triangle-fill", color: "text-amber-500" },
-                      { title: "Certificates Generated", val: "12", sub: "MCC15-07 / MCC16-07", icon: "bi-file-earmark-badge-fill", color: "text-emerald-400" },
-                      { title: "Audit Log Entries", val: String(audit.length), sub: "SHA256 Hash Chained", icon: "bi-database-fill-check", color: "text-blue-400" }
+                      { title: "Total Jobs Today", val: String(intakeFiles.length), sub: "Intake workbooks", icon: "bi-briefcase-fill", color: "text-amber-400" },
+                      { title: "Pending Validation", val: String(activeValidation.filter(v => v.status !== 'pass').length), sub: "Stage 3 Gate", icon: "bi-exclamation-triangle-fill", color: "text-amber-500" },
+                      { title: "Certificates Generated", val: String(liveCerts.length || (generatedCert ? 1 : 12)), sub: "MCC15-07 / MCC16-07", icon: "bi-file-earmark-badge-fill", color: "text-emerald-400" },
+                      { title: "Audit Log Entries", val: String(activeAudit.length), sub: "SHA256 Hash Chained", icon: "bi-database-fill-check", color: "text-blue-400" }
                     ].map((card, i) => (
                       <div key={i} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 space-y-2">
                         <div className="flex justify-between items-center">
@@ -246,13 +379,11 @@
                     ))}
                   </div>
 
-                  {/* 3 COLUMNS */}
                   <div className="grid grid-cols-3 gap-6">
-                    {/* COL 1: INTAKE */}
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
                       <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
                         <span className="font-semibold text-sm">Recent Intake Files</span>
-                        <span className="mono text-[10px] text-zinc-500">2 Files</span>
+                        <span className="mono text-[10px] text-zinc-500">{intakeFiles.length} Files</span>
                       </div>
                       <div className="space-y-2">
                         {intakeFiles.map(file => (
@@ -267,14 +398,13 @@
                       </div>
                     </div>
 
-                    {/* COL 2: VALIDATION SUMMARY */}
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
                       <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
-                        <span className="font-semibold text-sm">Live Validation Check</span>
-                        <span className="mono text-[10px] text-emerald-400">9/9 PASSED</span>
+                        <span className="font-semibold text-sm">Live Validation Summary</span>
+                        <span className="mono text-[10px] text-emerald-400">{activeValidation.filter(v => v.status === 'pass').length}/{activeValidation.length} PASSED</span>
                       </div>
                       <div className="space-y-2">
-                        {validation.slice(0, 4).map((v, i) => (
+                        {activeValidation.slice(0, 4).map((v, i) => (
                           <div key={i} className="p-2 bg-zinc-800/40 rounded border border-zinc-800 flex justify-between items-center text-xs">
                             <span className="text-zinc-300">{v.rule}</span>
                             <span className={`mono text-[10px] px-1.5 py-0.5 rounded ${v.status === 'pass' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
@@ -285,14 +415,13 @@
                       </div>
                     </div>
 
-                    {/* COL 3: AUDIT TRAIL */}
                     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-3">
                       <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
                         <span className="font-semibold text-sm">Audit Trail Digest</span>
                         <span className="mono text-[10px] text-amber-400">SHA256 Log</span>
                       </div>
                       <div className="space-y-2">
-                        {audit.slice(0, 3).map((a, i) => (
+                        {activeAudit.slice(0, 3).map((a, i) => (
                           <div key={i} className="p-2 bg-zinc-800/40 rounded border border-zinc-800 space-y-1">
                             <div className="text-[11px] text-zinc-300 truncate">{a.action}</div>
                             <div className="mono text-[9px] text-zinc-500 flex justify-between">
@@ -313,10 +442,18 @@
                   <div className="flex justify-between items-center">
                     <div>
                       <h1 className="text-lg font-bold text-white">Stage 1: File Intake & Checksum Validation</h1>
-                      <p className="text-xs text-zinc-400">Upload Excel Client Submission and Raw Calibration workbook files.</p>
+                      <p className="text-xs text-zinc-400">Upload BOEC-REM-YYYY-XXX_CLIENT.xlsx and RAW.xlsx workbooks.</p>
                     </div>
                     <button
-                      onClick={() => { setParsingProgress(0); addAudit("Simulated File Intake Validation", "S1"); setParsingProgress(100); }}
+                      onClick={() => {
+                        if (stagedSubmission && stagedRaw) {
+                          handleFileUpload(stagedSubmission, stagedRaw);
+                        } else {
+                          addAudit("Validated Mock Intake Files", "S1");
+                          setWorkflowStage(2);
+                          setView("stage2");
+                        }
+                      }}
                       className="bg-amber-500 text-black font-semibold text-xs px-4 py-2 rounded-lg hover:bg-amber-400"
                     >
                       Validate Intake
@@ -327,6 +464,16 @@
                     <i className="bi bi-cloud-arrow-up text-3xl text-amber-500"></i>
                     <div className="font-semibold text-sm text-zinc-200">Drop BOEC Calibration Excel Workbooks (.xlsx)</div>
                     <div className="mono text-xs text-zinc-500">Supports Submission and RawData sheets formatted per CP-02-08</div>
+                    <div className="pt-2 flex justify-center gap-3">
+                      <input type="file" accept=".xlsx,.xls" ref={subInputRef} className="hidden" onChange={(e) => setStagedSubmission(e.target.files[0])} />
+                      <input type="file" accept=".xlsx,.xls" ref={rawInputRef} className="hidden" onChange={(e) => setStagedRaw(e.target.files[0])} />
+                      <button onClick={() => subInputRef.current.click()} className="mono text-xs px-3 py-1.5 rounded bg-zinc-800 border border-zinc-700 hover:bg-zinc-700">
+                        {stagedSubmission ? stagedSubmission.name : "Select Submission Excel"}
+                      </button>
+                      <button onClick={() => rawInputRef.current.click()} className="mono text-xs px-3 py-1.5 rounded bg-zinc-800 border border-zinc-700 hover:bg-zinc-700">
+                        {stagedRaw ? stagedRaw.name : "Select Raw Data Excel"}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden">
@@ -438,13 +585,13 @@
                       <h1 className="text-lg font-bold text-white">Stage 3: ISO4037-3 & SANAS Compliance Validation</h1>
                       <p className="text-xs text-zinc-400">9 Automated Technical Rules Checks Applied</p>
                     </div>
-                    <button onClick={() => { setView("stage4"); addAudit("Validation Passed - Proceeded to Stage 4", "S3"); }} className="bg-amber-500 text-black font-semibold text-xs px-4 py-2 rounded-lg hover:bg-amber-400">
+                    <button onClick={() => { setView("stage4"); handleGenerateCert(); addAudit("Validation Passed - Proceeded to Stage 4", "S3"); }} className="bg-amber-500 text-black font-semibold text-xs px-4 py-2 rounded-lg hover:bg-amber-400">
                       Generate Certificate
                     </button>
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
-                    {validation.map((v, idx) => (
+                    {activeValidation.map((v, idx) => (
                       <div key={idx} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 space-y-2">
                         <div className="flex justify-between items-start">
                           <span className="font-semibold text-xs text-white">{v.rule}</span>
@@ -487,7 +634,6 @@
                     </div>
                   </div>
 
-                  {/* CERTIFICATE PREVIEW PANE */}
                   <div className="bg-white text-zinc-900 rounded-xl p-8 max-w-[900px] mx-auto shadow-2xl space-y-6 font-serif">
                     <div className="flex justify-between items-start border-b-2 border-zinc-900 pb-4">
                       <div>
@@ -495,7 +641,7 @@
                         <p className="text-xs text-zinc-600 font-sans">SANAS Accredited Calibration Laboratory CAL-2024-07</p>
                       </div>
                       <div className="text-right text-xs font-sans">
-                        <div className="font-bold">CERTIFICATE NO: BOEC-REM-2024-084</div>
+                        <div className="font-bold">CERTIFICATE NO: {generatedCert?.cert_no || "BOEC-CAL-2024-084"}</div>
                         <div className="text-zinc-500">Template: {selectedTemplate}</div>
                       </div>
                     </div>
@@ -559,7 +705,7 @@
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-800/60">
-                        {audit.map((entry) => (
+                        {activeAudit.map((entry) => (
                           <tr key={entry.id} className="hover:bg-zinc-800/30">
                             <td className="p-3 mono font-semibold text-amber-400">{entry.id}</td>
                             <td className="p-3 mono text-zinc-400">{entry.ts}</td>
@@ -657,11 +803,11 @@
                 </div>
 
                 <div className="space-y-2 mono text-xs bg-zinc-800/50 p-3 rounded border border-zinc-800 text-zinc-300">
-                  <div className="flex justify-between"><span>Certificate:</span> <span className="text-amber-400">BOEC-REM-2024-084</span></div>
+                  <div className="flex justify-between"><span>Certificate:</span> <span className="text-amber-400">{generatedCert?.cert_no || "BOEC-CAL-2024-084"}</span></div>
                   <div className="flex justify-between"><span>Validation:</span> <span className="text-emerald-400">9/9 PASSED</span></div>
                   <div className="flex justify-between"><span>Signature:</span> <span>J. Van der Merwe (TM-042)</span></div>
                   <div className="flex justify-between"><span>POPIA Mode:</span> <span className="text-emerald-400">Strict Local Enclave</span></div>
-                  <div className="flex justify-between"><span>Hash Chain:</span> <span className="text-emerald-400">sha256:a3f9c1e2...</span></div>
+                  <div className="flex justify-between"><span>Hash Chain:</span> <span className="text-emerald-400">{generatedCert?.hash || "sha256:a3f9c1e2..."}</span></div>
                 </div>
 
                 <div className="flex gap-3">
@@ -673,10 +819,9 @@
                   </button>
                   <button
                     onClick={() => {
-                      setIsSigned(true);
+                      handleSign();
                       setShowOperatorModal(false);
-                      setWorkflowStage(5);
-                      addAudit("Approved Final Release & Applied Digital Signature", "S4->S5");
+                      setView("stage5");
                     }}
                     className="flex-1 bg-amber-500 text-black font-semibold text-xs py-2 rounded-lg hover:bg-amber-400"
                   >
