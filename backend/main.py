@@ -34,6 +34,31 @@ os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 jobs_store: Dict[str, Dict[str, Any]] = {}
 
+templates_store: List[Dict[str, Any]] = [
+    {
+        "id": "MCC15-07",
+        "name": "MCC15-07 v2.1",
+        "version": "v2.1",
+        "checksum": "sha256:b7e4a2f81d9e...",
+        "approval_date": "2024-08-19",
+        "instrument_type": "REM / Area Monitor",
+        "status": "ACTIVE",
+        "required_fields": ["Client Name", "Instrument ID", "Calibration Date", "Technician", "Temp Range", "Humidity Range"],
+        "docx_template": "templates/MCC15-07_v2.1.docx"
+    },
+    {
+        "id": "MCC16-07",
+        "name": "MCC16-07 v2.1",
+        "version": "v2.1",
+        "checksum": "sha256:f3d2b1c48e7a...",
+        "approval_date": "2024-06-11",
+        "instrument_type": "Survey Meter / EPD",
+        "status": "ACTIVE",
+        "required_fields": ["Client Name", "Serial Number", "Calibration Factor", "Dose Rate Linearity", "Technician"],
+        "docx_template": "templates/MCC16-07_v2.1.docx"
+    }
+]
+
 @app.get("/health")
 async def health():
     llama = get_llama_client() is not None
@@ -287,10 +312,55 @@ async def download_cert(cert_no: str = None, job_id: str = None, format: str = Q
 
 @app.get("/api/templates")
 async def list_templates():
-    return [
-        {"id": "MCC15-07", "version": "v2.1", "checksum": "b7e4a2f8...", "approval_date": "2024-08-19", "instrument_type": "REM"},
-        {"id": "MCC16-07", "version": "v2.1", "checksum": "f3d2b1c4...", "approval_date": "2024-06-11", "instrument_type": "Survey Meter / EPD"}
-    ]
+    return templates_store
+
+@app.post("/api/templates/update")
+async def update_template(payload: Dict[str, Any] = Body(...)):
+    template_id = payload.get("id")
+    if not template_id:
+        raise HTTPException(400, "Template ID required")
+
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S SAST")
+    updated_template = None
+
+    for i, t in enumerate(templates_store):
+        if t["id"] == template_id:
+            templates_store[i] = {
+                **t,
+                "version": payload.get("version", t.get("version")),
+                "status": payload.get("status", t.get("status")),
+                "instrument_type": payload.get("instrument_type", t.get("instrument_type")),
+                "approval_date": payload.get("approval_date", t.get("approval_date")),
+                "required_fields": payload.get("required_fields", t.get("required_fields")),
+                "checksum": f"sha256:{hashlib.sha256(ts.encode()).hexdigest()[:12]}...",
+                "last_modified": ts
+            }
+            updated_template = templates_store[i]
+            break
+
+    if not updated_template:
+        # Add as new template
+        new_tpl = {
+            "id": template_id,
+            "name": payload.get("name", f"{template_id} v1.0"),
+            "version": payload.get("version", "v1.0"),
+            "checksum": f"sha256:{hashlib.sha256(ts.encode()).hexdigest()[:12]}...",
+            "approval_date": payload.get("approval_date", datetime.now().strftime("%Y-%m-%d")),
+            "instrument_type": payload.get("instrument_type", "General Radiometric"),
+            "status": payload.get("status", "ACTIVE"),
+            "required_fields": payload.get("required_fields", ["Client Name", "Instrument ID", "Calibration Date"]),
+            "last_modified": ts
+        }
+        templates_store.append(new_tpl)
+        updated_template = new_tpl
+
+    await log_event("SYS_TEMPLATES", "TEMPLATE_CONFIGURED", {"id": template_id, "version": updated_template["version"], "status": updated_template["status"]})
+
+    return {
+        "status": "SUCCESS",
+        "template": updated_template,
+        "templates": templates_store
+    }
 
 @app.post("/api/process")
 async def process_submission(

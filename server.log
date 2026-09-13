@@ -22,3 +22,13 @@ INFO:     127.0.0.1:50872 - "GET / HTTP/1.1" 200 OK
 INFO:     127.0.0.1:50872 - "GET /health HTTP/1.1" 200 OK
 INFO:     127.0.0.1:50872 - "GET /api/audit?limit=100 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:50872 - "GET /api/certs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58436 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58436 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58436 - "GET /api/audit?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58436 - "GET /api/certs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58436 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56736 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56736 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56736 - "GET /api/audit?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56736 - "GET /api/certs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56736 - "GET /api/templates HTTP/1.1" 200 OK
