@@ -27,6 +27,8 @@ def test_parser_and_validation():
 
     assert sub_data is not None
     assert cal_data is not None
+    assert "schema_validation" in sub_data
+    assert "schema_validation" in cal_data
 
     merged = {**sub_data, **cal_data}
     val = validate_calibration_data(merged)
@@ -115,7 +117,25 @@ def test_api_endpoints():
     assert r_dl.status_code == 200
     assert len(r_dl.content) > 0
 
-    # 5. Audit Endpoint
+    # 5. Templates Registry Endpoints
+    r_tpl_get = client.get("/api/templates")
+    assert r_tpl_get.status_code == 200
+    templates = r_tpl_get.json()
+    assert isinstance(templates, list)
+    assert len(templates) >= 2
+
+    r_tpl_up = client.post("/api/templates/update", json={
+        "id": "MCC15-07",
+        "version": "v2.2-TEST",
+        "status": "ACTIVE",
+        "instrument_type": "Area Monitor Test",
+        "required_fields": ["Client Name", "Instrument ID"]
+    })
+    assert r_tpl_up.status_code == 200
+    assert r_tpl_up.json()["status"] == "SUCCESS"
+    assert r_tpl_up.json()["template"]["version"] == "v2.2-TEST"
+
+    # 6. Audit Endpoint
     r_audit = client.get("/api/audit")
     assert r_audit.status_code == 200
     assert isinstance(r_audit.json(), list)

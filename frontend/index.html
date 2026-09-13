@@ -92,6 +92,29 @@
       const [liveAudit, setLiveAudit] = useState(null);
       const [liveCerts, setLiveCerts] = useState([]);
       const [selectedTemplate, setSelectedTemplate] = useState("MCC15-07 v2.1");
+      const [templatesList, setTemplatesList] = useState([
+        {
+          id: "MCC15-07",
+          name: "MCC15-07 v2.1",
+          version: "v2.1",
+          checksum: "sha256:b7e4a2f81d9e...",
+          approval_date: "2024-08-19",
+          instrument_type: "REM / Area Monitor",
+          status: "ACTIVE",
+          required_fields: ["Client Name", "Instrument ID", "Calibration Date", "Technician", "Temp Range", "Humidity Range"]
+        },
+        {
+          id: "MCC16-07",
+          name: "MCC16-07 v2.1",
+          version: "v2.1",
+          checksum: "sha256:f3d2b1c48e7a...",
+          approval_date: "2024-06-11",
+          instrument_type: "Survey Meter / EPD",
+          status: "ACTIVE",
+          required_fields: ["Client Name", "Serial Number", "Calibration Factor", "Dose Rate Linearity", "Technician"]
+        }
+      ]);
+      const [editingTemplate, setEditingTemplate] = useState(null);
       const [isSigned, setIsSigned] = useState(false);
       const [showOperatorModal, setShowOperatorModal] = useState(false);
       const [showDataModal, setShowDataModal] = useState(null); // Modal data inspector
@@ -137,6 +160,10 @@
             const certsData = await apiFetch("/api/certs");
             if (certsData && certsData.certificates) {
               setLiveCerts(certsData.certificates);
+            }
+            const tplData = await apiFetch("/api/templates");
+            if (Array.isArray(tplData) && tplData.length > 0) {
+              setTemplatesList(tplData);
             }
           }
         };
@@ -850,19 +877,74 @@
               {/* TEMPLATES VIEW */}
               {view === "templates" && (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-3"><button onClick={() => { setView("dashboard"); addAudit("Returned to Dashboard", "NAV"); }} className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-semibold text-xs px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition"><i className="bi bi-arrow-left"></i> Back to Dashboard</button><h1 className="text-lg font-bold text-white">Templates Registry</h1></div>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => { setView("dashboard"); addAudit("Returned to Dashboard", "NAV"); }} className="bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-semibold text-xs px-3 py-1.5 rounded-lg border border-zinc-700 flex items-center gap-1.5 transition">
+                        <i className="bi bi-arrow-left"></i> Back to Dashboard
+                      </button>
+                      <div>
+                        <h1 className="text-lg font-bold text-white">Controlled Certificate Templates Registry</h1>
+                        <p className="text-xs text-zinc-400">Click any template card or button to edit required fields, version, and accreditation parameters</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setEditingTemplate({
+                        id: `MCC${templatesList.length + 15}-07`,
+                        name: `MCC${templatesList.length + 15}-07 v1.0`,
+                        version: "v1.0",
+                        status: "ACTIVE",
+                        instrument_type: "Specialized Radiometric Instrument",
+                        approval_date: new Date().toISOString().split('T')[0],
+                        required_fields: ["Client Name", "Instrument ID", "Calibration Date", "Technician"]
+                      })}
+                      className="bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition"
+                    >
+                      <i className="bi bi-plus-lg"></i> Add Custom Template
+                    </button>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    {[
-                      { name: "MCC15-07 v2.1", type: "Standard Area & REM Calibration", date: "2024-08-19", checksum: "b7e4a2f8...", status: "ACTIVE" },
-                      { name: "MCC16-07 v2.1", type: "Survey Meter / EPD Calibration", date: "2024-06-11", checksum: "f3d2b1c4...", status: "ACTIVE" }
-                    ].map((t, i) => (
-                      <div key={i} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-amber-400 text-sm">{t.name}</span>
-                          <span className="mono text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">{t.status}</span>
+                    {templatesList.map((t, i) => (
+                      <div
+                        key={i}
+                        onClick={() => setEditingTemplate({...t})}
+                        className="bg-zinc-900/80 hover:bg-zinc-800/90 border border-zinc-800 hover:border-amber-500/50 cursor-pointer rounded-xl p-5 space-y-4 transition group"
+                      >
+                        <div className="flex justify-between items-center border-b border-zinc-800/80 pb-3">
+                          <div>
+                            <span className="font-bold text-amber-400 text-sm group-hover:text-amber-300">{t.name || t.id}</span>
+                            <span className="mono text-[10px] text-zinc-500 block">Version: {t.version}</span>
+                          </div>
+                          <span className={`mono text-[10px] px-2.5 py-1 rounded font-semibold ${t.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+                            {t.status}
+                          </span>
                         </div>
-                        <div className="text-xs text-zinc-300">{t.type}</div>
-                        <div className="mono text-[10px] text-zinc-500">Approval Date: {t.date} | SHA256: {t.checksum}</div>
+
+                        <div className="space-y-1.5 text-xs">
+                          <div className="text-zinc-200"><span className="text-zinc-500 mono text-[10px]">Scope:</span> {t.instrument_type}</div>
+                          <div className="mono text-[10px] text-zinc-400"><span className="text-zinc-500">SANAS Approved:</span> {t.approval_date}</div>
+                          <div className="mono text-[10px] text-zinc-400 truncate"><span className="text-zinc-500">Checksum:</span> {t.checksum}</div>
+                        </div>
+
+                        {t.required_fields && (
+                          <div className="pt-2 border-t border-zinc-800/60 flex flex-wrap gap-1">
+                            {t.required_fields.map((rf, rfi) => (
+                              <span key={rfi} className="mono text-[9px] bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded border border-zinc-700/80">
+                                {rf}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingTemplate({...t});
+                          }}
+                          className="w-full bg-zinc-800 group-hover:bg-amber-500 group-hover:text-black text-zinc-200 font-semibold text-xs py-2 rounded-lg border border-zinc-700/80 flex items-center justify-center gap-2 transition"
+                        >
+                          <i className="bi bi-sliders"></i> Edit & Configure Template
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -947,6 +1029,124 @@
                   )}
                   <button onClick={() => setShowDataModal(null)} className="px-4 bg-zinc-800 text-zinc-300 text-xs py-2 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition">
                     Close Inspector
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TEMPLATE CONFIGURATION MODAL */}
+          {editingTemplate && (
+            <div className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-[600px] max-w-full rounded-xl border border-zinc-700 bg-zinc-900 p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[90vh]">
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <i className="bi bi-sliders text-amber-500 text-lg"></i>
+                    <div>
+                      <div className="font-bold text-sm text-white">Configure Template: {editingTemplate.id}</div>
+                      <div className="mono text-[10px] text-zinc-400">SANAS Accreditation & Document Control Settings</div>
+                    </div>
+                  </div>
+                  <button onClick={() => setEditingTemplate(null)} className="text-zinc-400 hover:text-white"><i className="bi bi-x-lg"></i></button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="space-y-1">
+                    <label className="mono text-[10px] text-zinc-400 uppercase">Template ID</label>
+                    <input
+                      type="text"
+                      value={editingTemplate.id || ""}
+                      onChange={(e) => setEditingTemplate({...editingTemplate, id: e.target.value})}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-amber-400 font-semibold focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="mono text-[10px] text-zinc-400 uppercase">Version</label>
+                    <input
+                      type="text"
+                      value={editingTemplate.version || "v2.1"}
+                      onChange={(e) => setEditingTemplate({...editingTemplate, version: e.target.value})}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-zinc-200 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="mono text-[10px] text-zinc-400 uppercase">Status</label>
+                    <select
+                      value={editingTemplate.status || "ACTIVE"}
+                      onChange={(e) => setEditingTemplate({...editingTemplate, status: e.target.value})}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-zinc-200 focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="ACTIVE">ACTIVE (SANAS Approved)</option>
+                      <option value="MAINTENANCE">MAINTENANCE (Review Required)</option>
+                      <option value="DEPRECATED">DEPRECATED (Archived)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="mono text-[10px] text-zinc-400 uppercase">Approval Date</label>
+                    <input
+                      type="date"
+                      value={editingTemplate.approval_date || ""}
+                      onChange={(e) => setEditingTemplate({...editingTemplate, approval_date: e.target.value})}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-zinc-200 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div className="col-span-2 space-y-1">
+                    <label className="mono text-[10px] text-zinc-400 uppercase">Instrument Scope / Description</label>
+                    <input
+                      type="text"
+                      value={editingTemplate.instrument_type || ""}
+                      onChange={(e) => setEditingTemplate({...editingTemplate, instrument_type: e.target.value})}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-zinc-200 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div className="col-span-2 space-y-1">
+                    <label className="mono text-[10px] text-zinc-400 uppercase">Required Validation Fields (comma-separated)</label>
+                    <input
+                      type="text"
+                      value={Array.isArray(editingTemplate.required_fields) ? editingTemplate.required_fields.join(", ") : (editingTemplate.required_fields || "")}
+                      onChange={(e) => setEditingTemplate({...editingTemplate, required_fields: e.target.value.split(",").map(s => s.trim())})}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-amber-300 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-zinc-800 flex justify-end gap-3">
+                  <button
+                    onClick={() => setEditingTemplate(null)}
+                    className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-xs hover:bg-zinc-700 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (apiOnline) {
+                        await apiFetch("/api/templates/update", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(editingTemplate)
+                        });
+                      }
+                      setTemplatesList(prev => {
+                        const idx = prev.findIndex(t => t.id === editingTemplate.id);
+                        if (idx >= 0) {
+                          const copy = [...prev];
+                          copy[idx] = { ...editingTemplate, name: `${editingTemplate.id} ${editingTemplate.version}` };
+                          return copy;
+                        } else {
+                          return [...prev, { ...editingTemplate, name: `${editingTemplate.id} ${editingTemplate.version}`, checksum: "sha256:custom..." }];
+                        }
+                      });
+                      addAudit(`Updated Template Configuration: ${editingTemplate.id}`, "REGISTRY");
+                      setEditingTemplate(null);
+                    }}
+                    className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-black font-semibold rounded-lg text-xs transition flex items-center gap-1.5"
+                  >
+                    <i className="bi bi-check-circle-fill"></i> Save Template Config
                   </button>
                 </div>
               </div>

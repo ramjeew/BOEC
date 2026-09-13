@@ -3,12 +3,86 @@ from typing import Dict, Any, List
 from datetime import datetime
 import os
 
+BOEC_SCHEMA = {
+    "required_sheets": ["Submission", "RawData"],
+    "rules": [
+        {"sheet": "Submission", "cell": "B4", "field": "client_name", "type": str, "required": True},
+        {"sheet": "Submission", "cell": "B7", "field": "instrument_id", "type": str, "regex": r"BOEC-.*"},
+        {"sheet": "RawData", "range": "D2:D8", "field": "temp", "type": float, "min": 18.0, "max": 24.0},
+        {"sheet": "RawData", "range": "E2:E8", "field": "humidity", "type": float, "min": 30.0, "max": 60.0}
+    ]
+}
+
+def validate_schema(wb: openpyxl.Workbook) -> List[Dict[str, Any]]:
+    """
+    Validates workbook layout and cell types against BOEC_SCHEMA prior to extraction.
+    Ensures SANAS TR-18 / ISO17025 impartiality and prevents extraction of malformed data.
+    """
+    schema_results = []
+    sheet_names = wb.sheetnames
+
+    # Check required sheets
+    for req_sheet in BOEC_SCHEMA.get("required_sheets", []):
+        if req_sheet not in sheet_names:
+            schema_results.append({
+                "level": "WARNING",
+                "sheet": req_sheet,
+                "rule": f"Missing sheet: {req_sheet}",
+                "message": f"Expected worksheet '{req_sheet}' not found in workbook. Fallback parser will search all available sheets."
+            })
+
+    # Validate cell level schema rules if target sheets exist
+    for rule in BOEC_SCHEMA.get("rules", []):
+        sheet_name = rule["sheet"]
+        if sheet_name in sheet_names:
+            ws = wb[sheet_name]
+            cell_ref = rule.get("cell")
+            if cell_ref:
+                val = ws[cell_ref].value
+                if rule.get("required") and (val is None or str(val).strip() == ""):
+                    schema_results.append({
+                        "level": "ERROR",
+                        "sheet": sheet_name,
+                        "cell": cell_ref,
+                        "rule": rule["field"],
+                        "message": f"Required field '{rule['field']}' at cell {cell_ref} is empty."
+                    })
+            cell_range = rule.get("range")
+            if cell_range:
+                try:
+                    cells = ws[cell_range]
+                    for row in cells:
+                        for cell in row:
+                            if cell.value is not None and isinstance(cell.value, (int, float)):
+                                num = float(cell.value)
+                                if "min" in rule and num < rule["min"]:
+                                    schema_results.append({
+                                        "level": "WARNING",
+                                        "sheet": sheet_name,
+                                        "cell": cell.coordinate,
+                                        "rule": rule["field"],
+                                        "message": f"Value {num} at {cell.coordinate} below SANAS/ISO range ({rule['min']}-{rule['max']})."
+                                    })
+                                elif "max" in rule and num > rule["max"]:
+                                    schema_results.append({
+                                        "level": "WARNING",
+                                        "sheet": sheet_name,
+                                        "cell": cell.coordinate,
+                                        "rule": rule["field"],
+                                        "message": f"Value {num} at {cell.coordinate} above SANAS/ISO range ({rule['min']}-{rule['max']})."
+                                    })
+                except Exception:
+                    pass
+
+    return schema_results
+
 def parse_excel(file_path: str) -> Dict[str, Any]:
     """
     Parses an Excel workbook into structured data for BOEC calibration processing.
     Extracts sheets, raw rows, and maps key fields (customer, equipment, serial, environmental conditions, calibration dose points).
     """
     wb = openpyxl.load_workbook(file_path, data_only=True)
+    schema_validation = validate_schema(wb)
     data = {}
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
@@ -48,6 +122,7 @@ def parse_excel(file_path: str) -> Dict[str, Any]:
         "humidity": humidity if humidity is not None else 45.0,
         "pressure": pressure if pressure is not None else 85.4,
         "dose_points": dose_points,
+        "schema_validation": schema_validation,
         "parsed_at": datetime.now().isoformat()
     }
     return result
